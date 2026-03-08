@@ -16,13 +16,6 @@ How the server filesystem is organized.
 /data/
 └── postgres/                # PostgreSQL persistent data (bind-mounted)
 
-~/code/
-├── knowledge-Base/          # This repo
-├── git-activity-bot/        # Dockerized git activity bot
-├── Dev-Strom/               # Application projects
-├── deep-agents-lab/
-└── Ollama-Guide/
-
 ~/INFRA/
 └── DocerPostgreINFRA.md     # Legacy infra reference (being replaced by this repo)
 ```
