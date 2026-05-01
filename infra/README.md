@@ -9,7 +9,7 @@ Reference documentation for the homelab server infrastructure.
 | [Directory Layout](directory-layout.md) | Server folder structure and separation conventions |
 | [Docker Networking](docker-networking.md) | Global network setup and container communication |
 | [Adding a Service](adding-a-service.md) | Step-by-step guide for onboarding a new container |
-| [Rclone Upload Hub (Google Drive)](rclone-gdrive-upload-hub.md) | Use the server + Tailscale to upload from mounted drives to Google Drive |
+| [RClone Hero to Zero](../Concepts/Rclone/RClone%20Hero%20to%20Zero.md) | Server “upload hub” pattern + cheat sheet for Google Drive |
 
 ## Quick Reference
 
