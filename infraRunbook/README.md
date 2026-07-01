@@ -1,6 +1,6 @@
-# Infrastructure Documentation
+# Infra Runbook
 
-Reference documentation for the homelab server infrastructure.
+Reference documentation for the homelab server infrastructure — Docker, networking, deployment, and operations.
 
 ## Documents
 
@@ -9,6 +9,8 @@ Reference documentation for the homelab server infrastructure.
 | [Directory Layout](directory-layout.md) | Server folder structure and separation conventions |
 | [Docker Networking](docker-networking.md) | Global network setup and container communication |
 | [Adding a Service](adding-a-service.md) | Step-by-step guide for onboarding a new container |
+| [PostgreSQL MCP](postgres-mcp.md) | Deploy and operate the read-only Postgres MCP server for AI agents |
+| [Tailscale Networking](tailscale-networking.md) | Mesh VPN, remote access, and `tailscale serve` |
 | [RClone Hero to Zero](../Concepts/Rclone/RClone%20Hero%20to%20Zero.md) | Server “upload hub” pattern + cheat sheet for Google Drive |
 
 ## Quick Reference
