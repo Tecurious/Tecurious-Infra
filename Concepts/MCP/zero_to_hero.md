@@ -141,3 +141,13 @@ The AI will automatically know which tools to request, execute them in order, an
 - **Zero**: "I have to copy-paste all my DB schemas, Wiki articles, and API docs into the ChatGPT window hoping it remembers context."
 - **Intermediate**: "I wrote a massive, custom Python backend with brittle regexes that pulls DB rows, formats them, and injects them into a 4,000-token prompt for the OpenAI API."
 - **Hero**: "I spun up a standardized MCP Server. Without me writing a single line of custom integration logic or prompt-engineering heavy middleware, my AI agent can securely browse my database, manage my GitHub, and diagnose my system logs—all natively reading the same universal architectural protocol."
+
+---
+
+## 8. Worked Example: Our PostgreSQL MCP
+
+We built a real MCP server for our homelab Postgres database. It uses the official `@modelcontextprotocol/sdk`, a custom read-only safety layer, and dual transports (stdio + HTTP).
+
+**Deep dive + build recipe:** [Building Our PostgreSQL MCP](building-postgresql-mcp.md)
+
+**Deploy on the server:** [PostgreSQL MCP Runbook](../../infraRunbook/postgres-mcp.md)
