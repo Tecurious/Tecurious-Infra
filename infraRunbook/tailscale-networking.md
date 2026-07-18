@@ -318,6 +318,11 @@ tailscale up --accept-routes
 # Serve a local port to your tailnet (like ngrok, but private)
 tailscale serve https / http://localhost:3000
 
+# Multiple HTTPS ports on the same host (saiserver examples):
+#   :443  → postgres-mcp (127.0.0.1:3000) — see postgres-mcp.md
+#   :8443 → Travel Map Intelligence (127.0.0.1:8000) — see travel-map-intelligence.md
+# sudo tailscale serve --bg --https=8443 http://127.0.0.1:8000
+
 # Expose to the public internet via Tailscale Funnel
 tailscale funnel 443
 ```
