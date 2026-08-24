@@ -2,7 +2,8 @@
 
 End-to-end guide for deploying and operating the read-only PostgreSQL MCP server on the homelab. This service gives AI agents (Cursor, Claude Desktop, etc.) safe, read-only access to Postgres for debugging and exploration.
 
-**Source repo:** [github.com/vallaksa/postgresql-mcp](https://github.com/vallaksa/postgresql-mcp)
+**Source repo:** [github.com/vallaksa/postgresql-mcp](https://github.com/vallaksa/postgresql-mcp)  
+**Deploy walkthrough:** [Deploying to production (Docker + Cursor)](../Concepts/MCP/deploying-postgresql-mcp-prod.md) — step-by-step record from our saiserver deploy.
 
 ---
 
@@ -61,7 +62,7 @@ flowchart TB
 |-----------|------------------|---------|
 | Postgres | `/opt/docker-infra/` → `postgres` | `global-network` |
 | pgAdmin | `/opt/docker-infra/` → `pgadmin` | `global-network` |
-| **PostgreSQL MCP** | `~/code/postgresql-mcp/` → `postgres-mcp` | `global-network` |
+| **PostgreSQL MCP** | `~/projects/code/postgresql-mcp/` → `postgres-mcp` | `global-network` |
 | Postgres data | `/data/postgres/` (bind mount) | — |
 
 **Placement decision:** MCP is a **standalone app** (own repo, own image, own deploy cycle) attached to `global-network` so it reaches `postgres` by container name. It does **not** belong in `/opt/docker-infra/` — that directory is for shared infra like the database itself.
@@ -103,13 +104,13 @@ Create the read-only user (one-time, or after password rotation):
 MCP_READER_PASSWORD='your-strong-password' docker exec -i postgres \
   psql -U postgres -d devstrom -v ON_ERROR_STOP=1 \
   -c "SET mcp.reader_password = '${MCP_READER_PASSWORD}'" \
-  -f - < ~/code/postgresql-mcp/scripts/setup_readonly_user.sql
+  -f - < ~/projects/code/postgresql-mcp/scripts/setup_readonly_user.sql
 ```
 
 Or from the repo on the server:
 
 ```bash
-cd ~/code/postgresql-mcp
+cd ~/projects/code/postgresql-mcp
 MCP_READER_PASSWORD='your-strong-password' psql -h localhost -U postgres -d devstrom \
   -v ON_ERROR_STOP=1 -f scripts/setup_readonly_user.sql
 ```
@@ -146,7 +147,7 @@ Ensure `main` includes the HTTP transport and Dockerfile (see [PR #1](https://gi
 
 ### Step 1 — Create `docker-compose.yml`
 
-In `~/code/postgresql-mcp/docker-compose.yml`:
+In `~/projects/code/postgresql-mcp/docker-compose.yml`:
 
 ```yaml
 services:
@@ -193,7 +194,7 @@ openssl rand -hex 32
 ### Step 3 — Build and start
 
 ```bash
-cd ~/code/postgresql-mcp
+cd ~/projects/code/postgresql-mcp
 docker compose up -d --build
 docker compose logs -f postgres-mcp
 ```
@@ -307,7 +308,7 @@ If the remote URL has issues in Agent mode, bridge HTTP to stdio:
 For quick debugging directly on the server:
 
 ```bash
-cd ~/code/postgresql-mcp
+cd ~/projects/code/postgresql-mcp
 export DATABASE_URL="postgresql://mcp_reader:password@localhost:5432/devstrom"
 npm run build
 npm start
@@ -352,7 +353,7 @@ flowchart LR
 ```
 
 ```bash
-cd ~/code/postgresql-mcp
+cd ~/projects/code/postgresql-mcp
 git pull origin main
 docker compose up -d --build
 curl -s http://127.0.0.1:3000/health
@@ -372,7 +373,7 @@ curl -s http://127.0.0.1:3000/health
 ### Restart / stop
 
 ```bash
-cd ~/code/postgresql-mcp
+cd ~/projects/code/postgresql-mcp
 docker compose restart postgres-mcp
 docker compose stop postgres-mcp
 docker compose down          # removes container, not the image

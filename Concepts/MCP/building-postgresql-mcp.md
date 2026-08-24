@@ -4,7 +4,8 @@ A practical guide to what we built in [postgresql-mcp](https://github.com/vallak
 
 **Prerequisite:** [MCP Zero-to-Hero](zero_to_hero.md) — protocol concepts and architecture.
 
-**Deployment:** [PostgreSQL MCP Runbook](../../infraRunbook/postgres-mcp.md) — Docker, Tailscale, operations.
+**Deployment:** [Production deploy walkthrough](deploying-postgresql-mcp-prod.md) — what we actually ran on saiserver.  
+**Operations:** [PostgreSQL MCP Runbook](../../infraRunbook/postgres-mcp.md) — Docker, Tailscale, troubleshooting.
 
 ---
 

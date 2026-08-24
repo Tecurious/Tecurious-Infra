@@ -100,7 +100,7 @@ tailscale serve status
 Open from any device on the tailnet:
 
 ```
-https://sai.tailaf8d25.ts.net:8443/
+https://<magicdns-hostname>:8443/
 ```
 
 (Root path `/` — not `/timeline`. `/timeline` on `:443` hits postgres-mcp and returns `Cannot GET /timeline`.)
@@ -161,7 +161,7 @@ curl -s "http://127.0.0.1:8000/route?fromLat=40.72&fromLon=-74.04&toLat=39.95&to
 
 | Symptom | Fix |
 |---------|-----|
-| `Cannot GET /timeline` | You hit `:443` (MCP). Use `https://sai.tailaf8d25.ts.net:8443/` |
+| `Cannot GET /timeline` | You hit `:443` (MCP). Use `https://<magicdns-hostname>:8443/` |
 | Button says filled but long dashes remain | Hard-refresh; older builds treated >200 km as flights. Re-run **Compute missing routes** |
 | Geocode / route slow first time | Cold cache; subsequent hits use `geocode-cache.json` / `route-cache.json` |
 | No shared cache across phone + Mac | Switch from `python3 -m http.server` to `node server.mjs` |
