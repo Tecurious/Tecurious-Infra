@@ -429,3 +429,4 @@ tailscale up --login-server https://headscale.yourdomain.com
 - [Docker Networking](docker-networking.md) — how containers connect on the server
 - [Adding a Service](adding-a-service.md) — deploying new services that are reachable over Tailscale
 - [PostgreSQL MCP](postgres-mcp.md) — expose MCP over Tailscale serve
+- [Remote Desktop](remote-desktop/README.md) — VNC/x11vnc on the Tailscale IP (not `tailscale serve`)

@@ -8,7 +8,7 @@ Each folder represents a distinct domain of knowledge:
 
 ```
 knowledge-Base/
-├── infraRunbook/   # Server, Docker, networking, deployment, and operations
+├── infraRunbook/   # Server, Docker, networking, remote desktop, deployment, and operations
 ├── databases/      # PostgreSQL, pgvector, Redis, etc.
 ├── languages/      # Python, JavaScript, Go, and language-specific notes
 ├── frameworks/     # Web frameworks, libraries, and tooling
