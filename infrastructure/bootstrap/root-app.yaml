@@ -1,0 +1,8 @@
+# Placeholder for ArgoCD app-of-apps root application.
+# TODO: replace with the real Application manifest during bootstrap.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root-app
+  namespace: argocd
+spec: {}
