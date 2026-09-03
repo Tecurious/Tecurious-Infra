@@ -1,6 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  namespace: data
   name: postgres-mcp
 spec:
   replicas: 1
@@ -37,6 +38,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  namespace: data
   name: postgres-mcp
 spec:
   type: NodePort
