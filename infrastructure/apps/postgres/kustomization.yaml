@@ -3,10 +3,11 @@ kind: Kustomization
 
 namespace: data
 
-secretGenerator:
-  - name: postgres-credentials
-    envs:
-      - .env.credentials   # gitignored — never committed
-
 resources:
   - statefulset.yaml
+
+# NOTE: postgres-credentials Secret is created out-of-band (it must never live in
+# git). Recreate manually with:
+#   kubectl -n data create secret generic postgres-credentials \
+#     --from-literal=POSTGRES_USER=... --from-literal=POSTGRES_PASSWORD=... \
+#     --from-literal=POSTGRES_DB=...
