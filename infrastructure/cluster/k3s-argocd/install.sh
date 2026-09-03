@@ -9,12 +9,12 @@ echo ">> Applying ArgoCD manifests (v2.13.3) via kustomize..."
 kubectl apply -k .
 
 echo ">> Waiting for argocd-server to be ready..."
-kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
+kubectl -n devpool rollout status deploy/argocd-server --timeout=300s
 
 echo ">> Service:"
-kubectl -n argocd get svc argocd-server
+kubectl -n devpool get svc argocd-server
 
 echo ">> Initial admin password (user: admin):"
-kubectl -n argocd get secret argocd-initial-admin-secret \
+kubectl -n devpool get secret argocd-initial-admin-secret \
   -o jsonpath='{.data.password}' | base64 -d
 echo

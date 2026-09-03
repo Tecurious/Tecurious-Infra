@@ -1,0 +1,2 @@
+# Credentials sourced by secretGenerator — NEVER commit real values
+.env.credentials

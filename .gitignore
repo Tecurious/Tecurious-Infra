@@ -1,0 +1,4 @@
+# Credentials — never commit
+infrastructure/apps/postgres/.env.credentials
+*.env
+.env
