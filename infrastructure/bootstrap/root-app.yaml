@@ -10,7 +10,7 @@ spec:
   source:
     repoURL: git@github.com:Tecurious/Tecurious-Infra.git
     targetRevision: feature/organise
-    path: infrastructure/apps
+    path: infrastructure/apps/apps-onboard
   destination:
     server: https://kubernetes.default.svc
   syncPolicy:
@@ -19,4 +19,3 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - DirectoryRecurse=true
