@@ -23,19 +23,17 @@ spec:
             - |
               set -e
               PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
-                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -v ON_ERROR_STOP=1 <<'SQL'
-              DO $$
-              BEGIN
-                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'devstrom') THEN
-                  CREATE ROLE devstrom LOGIN PASSWORD 'devstrom_pw_CHANGE_ME';
-                END IF;
-              END
-              $$;
-              CREATE SCHEMA IF NOT EXISTS devstrom AUTHORIZATION devstrom;
-              GRANT USAGE, CREATE ON SCHEMA devstrom TO devstrom;
-              ALTER ROLE devstrom SET search_path = devstrom;
-              CREATE EXTENSION IF NOT EXISTS vector;
-              SQL
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -v ON_ERROR_STOP=1 -tAc \
+                "SELECT 1 FROM pg_roles WHERE rolname='devstrom'" | grep -q 1 || \
+                PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -c \
+                "CREATE ROLE devstrom LOGIN PASSWORD 'devstrom_pw_CHANGE_ME'"
+              PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -v ON_ERROR_STOP=1 \
+                -c "CREATE SCHEMA IF NOT EXISTS devstrom AUTHORIZATION devstrom" \
+                -c "GRANT USAGE, CREATE ON SCHEMA devstrom TO devstrom" \
+                -c "ALTER ROLE devstrom SET search_path = devstrom" \
+                -c "CREATE EXTENSION IF NOT EXISTS vector"
           env:
             - name: SOURCE_PG_USER
               valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
