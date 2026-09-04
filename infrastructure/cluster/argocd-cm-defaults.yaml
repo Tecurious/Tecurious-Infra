@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  namespace: devpool
+  labels:
+    app.kubernetes.io/name: argocd-cm
+    app.kubernetes.io/part-of: argocd
+data:
+  # Default branch for new Applications — the convention is: every app
+  # tracks main. Enforced via runbook + this documented default.
+  application.instanceLabelKey: argocd.argoproj.io/instance
+  # Make 'main' explicit as the server-wide default for UI-created apps
+  # (ApplicationSet / UI "default branch" hint).
+  statusbadge.enabled: "true"

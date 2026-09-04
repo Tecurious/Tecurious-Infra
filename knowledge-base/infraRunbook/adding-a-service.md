@@ -1,85 +1,62 @@
-# Adding a New Service
+# Adding a service to the cluster
 
-Step-by-step checklist for adding any new container to the server infrastructure.
+How to onboard a new app so ArgoCD manages it. Everything lives in
+`github.com/Tecurious/Tecurious-Infra` (branch `main` — always `main`).
 
-## Decision: Infra or Standalone?
+## Layout
 
-| Type | Where | When to Use |
-|---|---|---|
-| **Infra service** | `/opt/docker-infra/docker-compose.yml` | Shared services (databases, reverse proxies, monitoring) |
-| **Standalone app** | `~/code/<project>/docker-compose.yml` | Self-contained apps with their own lifecycle |
-
-If the service needs to talk to `postgres` or other infra containers, attach it to `global-network` regardless of where its compose file lives.
-
-## Checklist
-
-### 1. Add the service definition
-
-Add to the appropriate `docker-compose.yml`:
-
-```yaml
-services:
-  my-service:
-    image: some-image:tag           # Or use 'build: .' for custom images
-    container_name: my-service      # Explicit name for DNS resolution
-    restart: unless-stopped         # Auto-restart on crash/reboot
-    env_file: .env                  # Secrets from .env file
-    ports:
-      - "HOST_PORT:CONTAINER_PORT"  # Only if host access is needed
-    volumes:
-      - /data/my-service:/data      # Persistent storage if needed
-    networks:
-      - global-network              # Join shared network
-
-networks:
-  global-network:
-    external: true
+```
+infrastructure/
+├── bootstrap/root-app.yaml       # app-of-apps; points at apps/apps-onboard/
+├── apps/
+│   ├── apps-onboard/<app>.yaml   # Application CR for the app (one per app)
+│   └── <app>/                    # workload manifests (kustomization + resources)
+│       └── application.yaml      # (canonical Application CR also lives here)
+└── cluster/                      # ArgoCD itself, firewall scripts, runbooks
 ```
 
-### 2. Configure secrets
+## Convention (do not deviate)
 
-Add any required environment variables to `.env`:
+- **Branch:** every Application must set `spec.source.targetRevision: main`.
+  Never feature branches, never HEAD, never a tag.
+- **Namespace:** each app gets its own namespace; workloads carry an explicit
+  `namespace:` in metadata (ArgoCD needs it).
+- **Secrets:** created out-of-band with `kubectl create secret` — never in git,
+  never via kustomize secretGenerator in a tracked dir.
+- **Images:** tag with semver (`v0.1.0` style), reference by tag, never `latest`.
 
-```env
-MY_SERVICE_USER=admin
-MY_SERVICE_PASSWORD=<password>
+## Steps
+
+1. Create `infrastructure/apps/<app>/` with workload manifests + `kustomization.yaml`.
+2. Create the Application CR — copy an existing one from `apps/apps-onboard/`,
+   change name/path/namespace only. `targetRevision` stays `main`.
+3. Apply the Application CR once manually:
+   `kubectl apply -f infrastructure/apps/<app>/application.yaml`
+4. Commit + push to `main`. ArgoCD auto-syncs within ~3 min.
+5. Verify: `kubectl -n devpool get applications` → app shows Synced/Healthy.
+
+## Gotchas (all learned the hard way)
+
+- **Jobs are immutable.** To change a Job (e.g. migrate job), delete it before
+  re-sync: `kubectl -n <ns> delete job <name>`.
+- **Application specs self-heal.** `kubectl patch` of an Application spec gets
+  reverted by ArgoCD. Change the spec in the repo AND `kubectl apply` the file.
+- **ArgoCD caches manifests in Redis.** If a sync keeps using an old revision
+  despite git being updated, flush: `kubectl -n devpool delete pod -l app.kubernetes.io/name=argocd-redis`.
+- **Secrets don't cross namespaces.** If a Job in ns X needs a secret from ns Y,
+  copy it (out-of-band, never commit).
+- **`%` in URLs breaks Alembic** (configparser interpolation). Use
+  `?options=-csearch_path=a,b` — no percent-encoding.
+- **pgvector lives in `public`.** Any role with a custom search_path must include
+  `public` to see the `vector` type.
+
+## Image delivery (current state)
+
+Images are built locally (`docker build`) and imported into k3s containerd:
+
+```
+docker save <image:tag> | sudo /usr/bin/ctr -a /run/k3s/containerd/containerd.sock -n k8s.io images import -
 ```
 
-### 3. Create persistent storage (if needed)
-
-```bash
-sudo mkdir -p /data/my-service
-sudo chown <container-uid>:<container-gid> /data/my-service
-```
-
-> Check the image's documentation for the correct UID. For example, PostgreSQL uses UID `999`.
-
-### 4. Deploy
-
-```bash
-cd /opt/docker-infra   # or ~/code/<project>
-docker compose up -d --build
-docker compose logs -f my-service
-```
-
-### 5. Verify
-
-```bash
-docker ps                          # Confirm it's running
-docker exec -it my-service sh      # Shell into the container
-docker network inspect global-network  # Confirm network attachment
-```
-
-## Template
-
-Minimal compose entry you can copy-paste:
-
-```yaml
-  new-service:
-    image: IMAGE:TAG
-    container_name: new-service
-    restart: unless-stopped
-    env_file: .env
-    networks:
-      - global-network
-```
+This means images are lost on node rebuild. TODO: GitHub Actions → ghcr.io
+build-and-push, then bump the tag in this repo (which triggers ArgoCD).
