@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - api-deployment.yaml
+  - web-deployment.yaml
+  - migration-job.yaml
+
+# NOTE: dev-strom-secrets is created out-of-band (never in git). Required keys:
+#   DATABASE_URL  (postgresql://devstrom:<pw>@postgres.data.svc.cluster.local:5432/<db>?options=-csearch_path%3Ddevstrom)
+#   API_KEY, TAVILY_API_KEY, LANGSMITH_API_KEY (optional), MCP_API_KEY (optional)
+# Recreate:
+#   kubectl -n devstrom create secret generic dev-strom-secrets \
+#     --from-literal=DATABASE_URL='...' --from-literal=API_KEY='...' \
+#     --from-literal=TAVILY_API_KEY='...'

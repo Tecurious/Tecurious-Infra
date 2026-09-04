@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev-strom
+  namespace: devpool
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Tecurious/Tecurious-Infra.git
+    targetRevision: feature/organise
+    path: infrastructure/apps/dev-strom
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: devstrom
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
