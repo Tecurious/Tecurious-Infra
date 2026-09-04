@@ -7,7 +7,7 @@ spec:
   project: default
   source:
     repoURL: git@github.com:Tecurious/Tecurious-Infra.git
-    targetRevision: feature/organise
+    targetRevision: main
     path: infrastructure/apps/postgres-mcp
   destination:
     server: https://kubernetes.default.svc
