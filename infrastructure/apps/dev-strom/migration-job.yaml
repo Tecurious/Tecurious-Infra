@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  namespace: devstrom
+  name: dev-strom-migrate
+  annotations:
+    # ArgoCD hook: run before the app syncs, delete+rerun on each new revision
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      initContainers:
+        # Pre-step: ensure the devstrom schema + role exist in the shared
+        # cluster postgres, so Alembic tables land in the devstrom schema.
+        # Uses the postgres superuser creds from postgres-credentials (ns data).
+        - name: db-bootstrap
+          image: postgres:16-alpine  # has psql client
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -v ON_ERROR_STOP=1 -tAc \
+                "SELECT 1 FROM pg_roles WHERE rolname='devstrom'" | grep -q 1 || \
+                PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -c \
+                "CREATE ROLE devstrom LOGIN PASSWORD 'devstrom_pw_CHANGE_ME'"
+              PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -v ON_ERROR_STOP=1 \
+                -c "CREATE SCHEMA IF NOT EXISTS devstrom AUTHORIZATION devstrom" \
+                -c "GRANT USAGE, CREATE ON SCHEMA devstrom TO devstrom" \
+                -c "ALTER ROLE devstrom SET search_path = devstrom" \
+                -c "CREATE EXTENSION IF NOT EXISTS vector"
+          env:
+            - name: SOURCE_PG_USER
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
+            - name: SOURCE_PG_PASSWORD
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD } }
+            - name: SOURCE_PG_DB
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_DB } }
+            - name: PGHOST
+              value: postgres.data.svc.cluster.local
+      containers:
+        - name: migrate
+          image: ghcr.io/tecurious/dev-strom-api:v0.1.1
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - secretRef:
+                name: dev-strom-secrets

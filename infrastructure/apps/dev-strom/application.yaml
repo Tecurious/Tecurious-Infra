@@ -1,18 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root-app
+  name: dev-strom
   namespace: devpool
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: git@github.com:Tecurious/Tecurious-Infra.git
     targetRevision: feature/organise
-    path: infrastructure/apps/apps-onboard
+    path: infrastructure/apps/dev-strom
   destination:
     server: https://kubernetes.default.svc
+    namespace: devstrom
   syncPolicy:
     automated:
       prune: true

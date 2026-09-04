@@ -1,18 +1,17 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: root-app
+  name: postgres-mcp
   namespace: devpool
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: git@github.com:Tecurious/Tecurious-Infra.git
     targetRevision: feature/organise
-    path: infrastructure/apps/apps-onboard
+    path: infrastructure/apps/postgres-mcp
   destination:
     server: https://kubernetes.default.svc
+    namespace: data
   syncPolicy:
     automated:
       prune: true
