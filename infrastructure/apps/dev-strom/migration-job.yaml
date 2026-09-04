@@ -12,6 +12,39 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      initContainers:
+        # Pre-step: ensure the devstrom schema + role exist in the shared
+        # cluster postgres, so Alembic tables land in the devstrom schema.
+        # Uses the postgres superuser creds from postgres-credentials (ns data).
+        - name: db-bootstrap
+          image: postgres:16-alpine  # has psql client
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              PGPASSWORD="$SOURCE_PG_PASSWORD" psql -h postgres.data.svc.cluster.local \
+                -U "$SOURCE_PG_USER" -d "$SOURCE_PG_DB" -v ON_ERROR_STOP=1 <<'SQL'
+              DO $$
+              BEGIN
+                IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'devstrom') THEN
+                  CREATE ROLE devstrom LOGIN PASSWORD 'devstrom_pw_CHANGE_ME';
+                END IF;
+              END
+              $$;
+              CREATE SCHEMA IF NOT EXISTS devstrom AUTHORIZATION devstrom;
+              GRANT USAGE, CREATE ON SCHEMA devstrom TO devstrom;
+              ALTER ROLE devstrom SET search_path = devstrom;
+              CREATE EXTENSION IF NOT EXISTS vector;
+              SQL
+          env:
+            - name: SOURCE_PG_USER
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_USER } }
+            - name: SOURCE_PG_PASSWORD
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_PASSWORD } }
+            - name: SOURCE_PG_DB
+              valueFrom: { secretKeyRef: { name: postgres-credentials, key: POSTGRES_DB } }
+            - name: PGHOST
+              value: postgres.data.svc.cluster.local
       containers:
         - name: migrate
           image: ghcr.io/tecurious/dev-strom-api:v0.1.0
