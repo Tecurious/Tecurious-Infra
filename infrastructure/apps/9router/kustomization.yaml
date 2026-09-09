@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: dev
+
+resources:
+  - namespace.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - service.yaml
+
+# Out-of-band secret (never committed): 9router-secrets in ns dev.
+# Recreate with:
+#   kubectl -n dev create secret generic 9router-secrets \
+#     --from-literal=INITIAL_PASSWORD='<choose-on-first-login>' \
+#     --from-literal=JWT_SECRET='<openssl rand -hex 32>' \
+#     --from-literal=API_KEY_SECRET='<openssl rand -hex 32>' \
+#     --from-literal=MACHINE_ID_SALT='<openssl rand -hex 16>'
+# JWT_SECRET/API_KEY_SECRET/MACHINE_ID_SALT are HMAC salts + signing keys,
+# not provider credentials. 9router's own provider tokens are configured
+# via the dashboard after first login and persisted in the SQLite PVC.

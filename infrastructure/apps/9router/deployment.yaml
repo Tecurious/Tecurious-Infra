@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: dev
+  name: 9router
+  labels:
+    app: 9router
+    environment: dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: 9router
+  template:
+    metadata:
+      labels:
+        app: 9router
+        environment: dev
+    spec:
+      containers:
+        - name: 9router
+          image: decolua/9router:0.5.69
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 20128
+          env:
+            - name: DATA_DIR
+              value: /app/data
+            - name: BASE_URL
+              value: https://sai.tailaf8d25.ts.net:8445
+            - name: NEXT_PUBLIC_BASE_URL
+              value: https://sai.tailaf8d25.ts.net:8445
+            - name: AUTH_COOKIE_SECURE
+              value: "true"
+            - name: REQUIRE_API_KEY
+              value: "true"
+            - name: ENABLE_REQUEST_LOGS
+              value: "false"
+          envFrom:
+            - secretRef:
+                name: 9router-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 20128
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 20128
+            initialDelaySeconds: 30
+            periodSeconds: 20
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: 9router-data
