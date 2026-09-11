@@ -7,6 +7,8 @@
 #   31322 - argocd-server HTTP NodePort
 #   30909 - argocd-server HTTPS NodePort
 #   30300 - postgres-mcp NodePort
+#   30310 - dev-strom web NodePort
+#   30320 - 9router NodePort
 #
 # Effect: these ports are reachable ONLY via tailscale0 interface.
 # Direct LAN/public access is dropped.
@@ -15,7 +17,7 @@
 #   sudo iptables -D INPUT ! -i tailscale0 -p tcp --dport 22 -j DROP
 set -euo pipefail
 
-PORTS="31322,30909,30300"
+PORTS="31322,30909,30300,30310,30320"
 SSH_PORT="22"
 RULE="! -i tailscale0 -p tcp -m multiport --dports ${PORTS} -j DROP"
 SSH_RULE="! -i tailscale0 -p tcp --dport ${SSH_PORT} -j DROP"

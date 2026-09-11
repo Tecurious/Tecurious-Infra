@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: 9router
+  namespace: devpool
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:Tecurious/Tecurious-Infra.git
+    targetRevision: main
+    path: infrastructure/apps/9router
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
