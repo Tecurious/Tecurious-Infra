@@ -21,6 +21,11 @@ spec:
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
+          env:
+            # Public origin of the SPA (Cloudflare Pages). Drives CORS
+            # allow_origins and session-cookie Secure flag.
+            - name: WEB_BASE_URL
+              value: "https://devstrom.site"
           envFrom:
             - secretRef:
                 name: dev-strom-secrets
