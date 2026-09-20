@@ -13,6 +13,8 @@ spec:
       labels:
         app: dev-strom-web
     spec:
+      imagePullSecrets:
+        - name: ghcr-pull
       containers:
         - name: web
           image: ghcr.io/tecurious/dev-strom-web:v0.1.4

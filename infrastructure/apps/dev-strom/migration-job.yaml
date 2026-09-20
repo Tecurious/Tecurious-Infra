@@ -12,6 +12,8 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      imagePullSecrets:
+        - name: ghcr-pull
       initContainers:
         # Pre-step: ensure the devstrom schema + role exist in the shared
         # cluster postgres, so Alembic tables land in the devstrom schema.
