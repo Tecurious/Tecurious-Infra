@@ -26,6 +26,10 @@ spec:
             # allow_origins and session-cookie Secure flag.
             - name: WEB_BASE_URL
               value: "https://devstrom.site"
+            # OAuth redirect_uri is derived from this (auth/providers.py) —
+            # must be the PUBLIC API origin, or GitHub auth loops on localhost.
+            - name: API_BASE_URL
+              value: "https://api.devstrom.site"
           envFrom:
             - secretRef:
                 name: dev-strom-secrets
