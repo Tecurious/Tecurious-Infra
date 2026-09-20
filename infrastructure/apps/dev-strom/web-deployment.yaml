@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: web
-          image: ghcr.io/tecurious/dev-strom-web:v0.1.0
+          image: ghcr.io/tecurious/dev-strom-web:v0.1.4
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
