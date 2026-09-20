@@ -55,12 +55,9 @@ spec:
             limits:
               memory: "128Mi"
               cpu: "200m"
-          livenessProbe:
-            httpGet:
-              path: /ready
-              port: 2000
-            initialDelaySeconds: 10
-            periodSeconds: 30
+          # No liveness probe: cloudflared's /ready was too strict for the
+          # ~100s probe-kill window (SIGTERM loop on a healthy tunnel).
+          # Cloudflared self-manages reconnects; restartPolicy covers crashes.
 ---
 apiVersion: v1
 kind: Namespace
