@@ -17,7 +17,7 @@ spec:
         - name: ghcr-pull
       containers:
         - name: api
-          image: ghcr.io/tecurious/dev-strom-api:v0.1.5
+          image: ghcr.io/tecurious/dev-strom-api:v0.1.6
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8000
