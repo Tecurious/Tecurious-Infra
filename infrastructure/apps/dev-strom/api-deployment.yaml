@@ -26,6 +26,14 @@ spec:
             # allow_origins and session-cookie Secure flag.
             - name: WEB_BASE_URL
               value: "https://devstrom.site"
+            # Public origin of this API. Was unset, so app/config.py fell
+            # back to its "http://localhost:8000" dev default — app/auth/
+            # providers.py builds the Google/GitHub OAuth redirect_uri from
+            # this value, so every sign-in attempt sent Google and GitHub a
+            # localhost redirect_uri that doesn't match either provider's
+            # registered callback URL (Error 400: redirect_uri_mismatch).
+            - name: API_BASE_URL
+              value: "https://api.devstrom.site"
           envFrom:
             - secretRef:
                 name: dev-strom-secrets
