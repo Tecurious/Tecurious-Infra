@@ -47,7 +47,7 @@ spec:
               value: postgres.data.svc.cluster.local
       containers:
         - name: migrate
-          image: ghcr.io/tecurious/dev-strom-api:v0.1.6
+          image: ghcr.io/tecurious/dev-strom-api:v0.1.7
           command: ["alembic", "upgrade", "head"]
           envFrom:
             - secretRef:
