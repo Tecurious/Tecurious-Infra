@@ -4,6 +4,8 @@ How saiserver decides who can connect to what. There are three layers: the home 
 
 Setup lives in [`infrastructure/cluster/`](../../infrastructure/cluster/): `firewall-block-nodeports.sh` installs everything below.
 
+New to firewalls? Start with the concept guide: [Firewalls Explained](../Concepts/Firewall/firewalls-explained.md).
+
 ---
 
 ## Layer 1: the home router (front gate)
