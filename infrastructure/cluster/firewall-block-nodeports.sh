@@ -1,54 +1,54 @@
 #!/usr/bin/env bash
-# LAN firewall block for k8s NodePorts — Tailscale-only access.
-# Applied rule + persistence. Run once per host; idempotent.
+# Tailscale-only access for SSH and k8s NodePorts. Run once per host with sudo; idempotent.
 #
-# Ports covered:
-#   22    - SSH (sshd still listens on all IFs; blocked except tailscale0)
-#   31322 - argocd-server HTTP NodePort
-#   30909 - argocd-server HTTPS NodePort
-#   30300 - postgres-mcp NodePort
-#   30310 - dev-strom web NodePort
-#   30320 - 9router NodePort
+#   SSH (22)   ssh-tailscale-only.service adds an iptables + ip6tables INPUT DROP for
+#              port 22 on every interface except tailscale0, at every boot.
+#   NodePorts  k3s kube-proxy opens NodePorts only on Tailscale addresses
+#              and localhost (k3s-config.yaml -> /etc/rancher/k3s/config.yaml). Covers every NodePort
+#              service, including ones added later.
 #
-# Effect: these ports are reachable ONLY via tailscale0 interface.
-# Direct LAN/public access is dropped.
+# Why not netfilter-persistent: `netfilter-persistent save` snapshots every rule on the
+# host, including k3s/Docker/Tailscale chains. At boot those chains don't exist yet, so
+# the restore aborts and none of the rules load. This script disables it.
 #
-# BREAK-GLASS: if Tailscale is broken and you are home, delete the SSH rule:
-#   sudo iptables -D INPUT ! -i tailscale0 -p tcp --dport 22 -j DROP
+# BREAK-GLASS: if Tailscale is broken and you are at the machine:
+#   sudo systemctl stop ssh-tailscale-only
 set -euo pipefail
 
-PORTS="31322,30909,30300,30310,30320"
-SSH_PORT="22"
-RULE="! -i tailscale0 -p tcp -m multiport --dports ${PORTS} -j DROP"
-SSH_RULE="! -i tailscale0 -p tcp --dport ${SSH_PORT} -j DROP"
+HERE=$(cd "$(dirname "$0")" && pwd)
+[ "$(id -u)" -eq 0 ] || { echo "run with sudo"; exit 1; }
 
-echo ">> Checking for existing rule..."
-if iptables -C INPUT $(echo "$RULE" | sed 's/! -i/! -i/') 2>/dev/null; then
-  echo "   rule already present, nothing to do"
+echo ">> SSH: installing ssh-tailscale-only.service"
+install -m 644 "$HERE/ssh-tailscale-only.service" /etc/systemd/system/ssh-tailscale-only.service
+systemctl daemon-reload
+systemctl enable --now ssh-tailscale-only.service
+
+echo ">> NodePorts: k3s nodeport-addresses"
+if cmp -s "$HERE/k3s-config.yaml" /etc/rancher/k3s/config.yaml; then
+  echo "   already configured"
+elif [ -f /etc/rancher/k3s/config.yaml ]; then
+  echo "   /etc/rancher/k3s/config.yaml exists and differs; merge k3s-config.yaml into it by hand, then: systemctl restart k3s"
+  exit 1
 else
-  echo ">> Inserting iptables rule..."
-  iptables -I INPUT $RULE
+  install -D -m 644 "$HERE/k3s-config.yaml" /etc/rancher/k3s/config.yaml
+  echo "   restarting k3s (running pods are not restarted)"
+  systemctl restart k3s
 fi
 
-echo ">> Checking SSH rule (port ${SSH_PORT})..."
-if iptables -C INPUT $(echo "$SSH_RULE" | sed 's/! -i/! -i/') 2>/dev/null; then
-  echo "   SSH rule already present, nothing to do"
-else
-  echo ">> Inserting SSH iptables rule..."
-  iptables -I INPUT $SSH_RULE
+echo ">> Disabling netfilter-persistent (old full-host snapshot)"
+if systemctl is-enabled -q netfilter-persistent 2>/dev/null; then
+  systemctl disable netfilter-persistent
 fi
+for f in /etc/iptables/rules.v4 /etc/iptables/rules.v6; do
+  if [ -f "$f" ]; then mv "$f" "$f.disabled-$(date +%F)"; fi
+done
+systemctl reset-failed netfilter-persistent 2>/dev/null || true
 
-echo ">> Making persistent across reboots..."
-# netfilter-persistent is the standard Ubuntu 24.04 mechanism
-if ! command -v netfilter-persistent >/dev/null 2>&1; then
-  echo "   installing iptables-persistent (DEBIAN_FRONTEND=noninteractive)"
-  DEBIAN_FRONTEND=noninteractive apt-get install -y -q iptables-persistent
-fi
-netfilter-persistent save
-
-echo ">> Verify:"
-iptables -L INPUT -n --line-numbers | grep -E "dports|dport ${SSH_PORT}|DROP" | head -5
+echo ">> Verify"
+iptables -S INPUT | grep -- '--dport 22'
+ip6tables -S INPUT | grep -- '--dport 22'
+grep -r nodeport-addresses /etc/rancher/k3s/config.yaml
 echo
-echo ">> NOTE: to undo manually:"
-echo "   NodePorts: iptables -D INPUT -p tcp -m multiport --dports ${PORTS} -j DROP"
-echo "   SSH:       iptables -D INPUT ! -i tailscale0 -p tcp --dport ${SSH_PORT} -j DROP"
+echo ">> Undo:"
+echo "   sudo systemctl disable --now ssh-tailscale-only && sudo rm /etc/systemd/system/ssh-tailscale-only.service"
+echo "   sudo rm /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s"

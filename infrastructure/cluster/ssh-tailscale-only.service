@@ -1,0 +1,16 @@
+# Drops SSH (port 22) on every interface except tailscale0, for IPv4 and IPv6.
+# Installed by firewall-block-nodeports.sh to /etc/systemd/system/.
+# Break-glass (at the machine, Tailscale down): sudo systemctl stop ssh-tailscale-only
+[Unit]
+Description=Allow SSH only over Tailscale
+Wants=network-pre.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'for t in iptables ip6tables; do $t -C INPUT ! -i tailscale0 -p tcp --dport 22 -j DROP 2>/dev/null || $t -I INPUT ! -i tailscale0 -p tcp --dport 22 -j DROP; done'
+ExecStop=/bin/sh -c 'for t in iptables ip6tables; do $t -D INPUT ! -i tailscale0 -p tcp --dport 22 -j DROP 2>/dev/null || true; done'
+
+[Install]
+WantedBy=multi-user.target
