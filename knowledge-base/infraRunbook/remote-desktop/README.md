@@ -183,5 +183,5 @@ This path **fails** with the current daemon, because x11vnc now listens on the T
 
 - [concepts.md](concepts.md) — X11, Wayland, VNC, x11vnc, bind, SSH `-N`/`-L`
 - [setup.md](setup.md) — unit file, GDM, password, discarded options
-- [display-freeze.html](display-freeze.html) — why an HDMI monitor on the NVIDIA port froze Xorg (diagrams; open in a browser)
+- [display-freeze.md](display-freeze.md) — why an HDMI monitor on the NVIDIA port froze Xorg, and the fix
 - [Tailscale Networking](../tailscale-networking.md)
