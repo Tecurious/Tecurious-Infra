@@ -142,7 +142,7 @@ See [tailscale-networking.md](tailscale-networking.md).
 ```bash
 sudo iptables -S INPUT                   # IPv4 rules, top to bottom
 sudo ip6tables -S INPUT                  # IPv6 rules
-systemctl status ssh-tailscale-only      # adds the SSH-only-over-Tailscale rule at boot
+systemctl status tailscale-only          # adds the Tailscale-only rule for SSH + Ollama at boot
 ```
 
 See [firewall.md](firewall.md).
@@ -221,7 +221,8 @@ systemctl status ollama                  # system service, runs as user "ollama"
 journalctl -u ollama -f
 ```
 
-- Ollama runs as one **system** service from `/usr/local/bin/ollama`; data and sign-in key are in `/usr/share/ollama/.ollama`. It listens on `127.0.0.1:11434`.
+- Ollama runs as one **system** service from `/usr/local/bin/ollama`; data and sign-in key are in `/usr/share/ollama/.ollama`. It listens on port 11434, reachable from the server and over Tailscale only.
+- From a Mac on the tailnet: `OLLAMA_HOST=http://sai:11434 ollama list`
 - `nvidia-smi` saying `Driver/library version mismatch` means the driver was updated and the old one is still loaded. Reboot.
 
 ---

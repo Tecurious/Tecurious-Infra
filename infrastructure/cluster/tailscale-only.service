@@ -1,0 +1,21 @@
+# Drops the listed host ports on every interface except tailscale0, for IPv4 and IPv6.
+#   22     SSH
+#   11434  Ollama (listens on 0.0.0.0; see ollama-override.conf)
+# Installed by firewall-block-nodeports.sh to /etc/systemd/system/.
+# To add a port: edit PORTS in both lines, re-run the script.
+# Break-glass (at the machine, Tailscale down): sudo systemctl stop tailscale-only
+#   This opens SSH *and* Ollama on every interface until you start it again.
+[Unit]
+Description=Allow selected host ports only over Tailscale
+Wants=network-pre.target
+Before=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=PORTS=22,11434
+ExecStart=/bin/sh -c 'for t in iptables ip6tables; do $t -C INPUT ! -i tailscale0 -p tcp -m multiport --dports $PORTS -j DROP 2>/dev/null || $t -I INPUT ! -i tailscale0 -p tcp -m multiport --dports $PORTS -j DROP; done'
+ExecStop=/bin/sh -c 'for t in iptables ip6tables; do $t -D INPUT ! -i tailscale0 -p tcp -m multiport --dports $PORTS -j DROP 2>/dev/null || true; done'
+
+[Install]
+WantedBy=multi-user.target
