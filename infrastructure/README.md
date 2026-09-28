@@ -26,7 +26,9 @@ infrastructure/
 └── cluster/
     ├── k3s-argocd/              # ArgoCD install (pinned v2.13.3) + NodePort patch
     ├── argocd-cm-defaults.yaml  # ArgoCD server config
-    └── firewall-block-nodeports.sh  # tailnet-only access for NodePorts + SSH
+    ├── firewall-block-nodeports.sh  # tailnet-only access for NodePorts + SSH (run with sudo)
+    ├── ssh-tailscale-only.service   # boot-time DROP for SSH outside tailscale0 (v4 + v6)
+    └── k3s-config.yaml              # /etc/rancher/k3s/config.yaml: NodePorts on Tailscale IPs + localhost only
 ```
 
 ## How it works

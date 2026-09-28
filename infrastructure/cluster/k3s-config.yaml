@@ -1,0 +1,6 @@
+# /etc/rancher/k3s/config.yaml (installed by firewall-block-nodeports.sh)
+# Open NodePorts only on Tailscale addresses and localhost. kube-proxy DNATs NodePort
+# traffic in PREROUTING, so an INPUT DROP rule can't block it; this setting can.
+# 127.0.0.0/8 is needed because `tailscale serve` proxies to 127.0.0.1:30300 and :31322.
+kube-proxy-arg:
+  - "nodeport-addresses=100.64.0.0/10,127.0.0.0/8"
