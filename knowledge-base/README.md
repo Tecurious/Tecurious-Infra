@@ -10,6 +10,7 @@ knowledge-base/
 ├── infraRunbook/    # Server, k8s, Docker, networking, Tailscale, deployment ops
 │   ├── adding-a-service.md        # How to onboard an app to ArgoCD (the canonical runbook)
 │   ├── cheat-sheet.md             # Terminal commands for checking on the server
+│   ├── firewall.md                # Who can reach which port, and how
 │   ├── directory-layout.md        # Server filesystem layout (/opt, /data, ~/code)
 │   ├── docker-networking.md
 │   ├── postgres-mcp.md
