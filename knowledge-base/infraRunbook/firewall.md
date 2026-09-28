@@ -48,14 +48,16 @@ New connection arrives
  Kubernetes & Tailscale housekeeping rules (added automatically)
         │
         ▼
- Is it for port 22 (SSH) or 11434 (Ollama)
- and NOT from tailscale0?                         ──yes──> DROP (silently ignored = timeout)
+ Is it for port 22 (SSH) or 11434 (Ollama)?  ──yes──> TS-ONLY chain:
+        │ no                                     from lo (the server itself)?  → allow
+        │                                        from tailscale0?              → allow
+        │                                        anything else                 → DROP (timeout)
         │ no
         ▼
  ACCEPT (default: allow)
 ```
 
-The `DROP` comes from **`tailscale-only.service`**. It re-adds the rule at every boot, for IPv4 and IPv6. To protect another host port, add it to `PORTS` in [`tailscale-only.service`](../../infrastructure/cluster/tailscale-only.service) and re-run the script.
+The `TS-ONLY` chain comes from **`tailscale-only.service`**. It rebuilds the chain at every boot, for IPv4 and IPv6. `lo` must be allowed, or programs on the server itself can't reach Ollama on `127.0.0.1:11434`. To protect another host port, add it to `PORTS` in [`tailscale-only.service`](../../infrastructure/cluster/tailscale-only.service) and re-run the script.
 
 **Kubernetes NodePorts** (ArgoCD, postgres-mcp, 9router) are handled differently. k3s is configured (`/etc/rancher/k3s/config.yaml`) to open NodePorts only on Tailscale addresses (`100.64.0.0/10`) and localhost. A `DROP` rule in `INPUT` can't do this job, because kube-proxy redirects NodePort traffic in `PREROUTING`, before `INPUT` ever sees it. Localhost is kept because `tailscale serve` proxies to `127.0.0.1:30300` and `127.0.0.1:31322`.
 
@@ -79,6 +81,7 @@ The `DROP` comes from **`tailscale-only.service`**. It re-adds the rule at every
 
 ```bash
 sudo iptables -S INPUT                 # IPv4 rules, top to bottom
+sudo iptables -S TS-ONLY               # the Tailscale-only chain
 sudo ip6tables -S INPUT                # IPv6 rules
 systemctl status tailscale-only        # the SSH + Ollama rule service
 cat /etc/rancher/k3s/config.yaml       # NodePort address limits
@@ -130,7 +133,7 @@ sudo rm /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s
 
 ## Ollama over Tailscale
 
-Ollama listens on `0.0.0.0:11434` ([`ollama-override.conf`](../../infrastructure/cluster/ollama-override.conf)) and `tailscale-only.service` drops 11434 on every interface except `tailscale0`. The override also makes Ollama refuse to start unless that firewall service is active, so it can't come up unprotected.
+Ollama listens on `0.0.0.0:11434` ([`ollama-override.conf`](../../infrastructure/cluster/ollama-override.conf)) and `tailscale-only.service` drops 11434 on every interface except `tailscale0` and `lo`. The override also makes Ollama refuse to start unless that firewall service is active, so it can't come up unprotected.
 
 From any tailnet device:
 

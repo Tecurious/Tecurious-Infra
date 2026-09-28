@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Tailscale-only access for SSH, Ollama and k8s NodePorts. Run once per host with sudo; idempotent.
 #
-#   Host ports tailscale-only.service adds an iptables + ip6tables INPUT DROP for
-#              22 (SSH) and 11434 (Ollama) on every interface except tailscale0, at every boot.
+#   Host ports tailscale-only.service drops 22 (SSH) and 11434 (Ollama) on every interface
+#              except tailscale0 and lo (iptables + ip6tables TS-ONLY chain), at every boot.
 #   Ollama     ollama-override.conf makes Ollama listen on 0.0.0.0 and refuse to start
 #              unless tailscale-only.service is active.
 #   NodePorts  k3s kube-proxy opens NodePorts only on Tailscale addresses
@@ -63,8 +63,10 @@ done
 systemctl reset-failed netfilter-persistent 2>/dev/null || true
 
 echo ">> Verify"
-iptables -S INPUT | grep -- '--dports 22,11434'
-ip6tables -S INPUT | grep -- '--dports 22,11434'
+iptables -S TS-ONLY
+ip6tables -S TS-ONLY
+iptables -S INPUT | grep TS-ONLY
+curl -s -m5 http://127.0.0.1:11434/api/version && echo
 ss -ltn | grep ':11434 '
 grep -r nodeport-addresses /etc/rancher/k3s/config.yaml
 echo
