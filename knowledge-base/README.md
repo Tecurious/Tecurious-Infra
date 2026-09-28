@@ -9,6 +9,7 @@ nothing in here is applied to the cluster.
 knowledge-base/
 ├── infraRunbook/    # Server, k8s, Docker, networking, Tailscale, deployment ops
 │   ├── adding-a-service.md        # How to onboard an app to ArgoCD (the canonical runbook)
+│   ├── cheat-sheet.md             # Terminal commands for checking on the server
 │   ├── directory-layout.md        # Server filesystem layout (/opt, /data, ~/code)
 │   ├── docker-networking.md
 │   ├── postgres-mcp.md
@@ -23,6 +24,7 @@ knowledge-base/
 
 - **Onboarding a service to k8s** → [infraRunbook/adding-a-service.md](infraRunbook/adding-a-service.md)
 - **Server filesystem layout** → [infraRunbook/directory-layout.md](infraRunbook/directory-layout.md)
+- **Terminal cheat sheet** → [infraRunbook/cheat-sheet.md](infraRunbook/cheat-sheet.md)
 
 ## Related
 
