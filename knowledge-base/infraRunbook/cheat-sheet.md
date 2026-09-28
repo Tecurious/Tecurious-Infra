@@ -140,9 +140,12 @@ See [tailscale-networking.md](tailscale-networking.md).
 ### Firewall
 
 ```bash
-sudo iptables -L -n -v | less            # raw rules
-systemctl status netfilter-persistent    # restores saved rules at boot
+sudo iptables -S INPUT                   # IPv4 rules, top to bottom
+sudo ip6tables -S INPUT                  # IPv6 rules
+systemctl status ssh-tailscale-only      # adds the SSH-only-over-Tailscale rule at boot
 ```
+
+See [firewall.md](firewall.md).
 
 ---
 
