@@ -48,13 +48,14 @@ New connection arrives
  Kubernetes & Tailscale housekeeping rules (added automatically)
         │
         ▼
- Is it for port 22 (SSH) and NOT from tailscale0?  ──yes──> DROP (silently ignored = timeout)
+ Is it for port 22 (SSH) or 11434 (Ollama)
+ and NOT from tailscale0?                         ──yes──> DROP (silently ignored = timeout)
         │ no
         ▼
  ACCEPT (default: allow)
 ```
 
-The port 22 `DROP` comes from **`ssh-tailscale-only.service`**. It re-adds the rule at every boot, for IPv4 and IPv6.
+The `DROP` comes from **`tailscale-only.service`**. It re-adds the rule at every boot, for IPv4 and IPv6. To protect another host port, add it to `PORTS` in [`tailscale-only.service`](../../infrastructure/cluster/tailscale-only.service) and re-run the script.
 
 **Kubernetes NodePorts** (ArgoCD, postgres-mcp, 9router) are handled differently. k3s is configured (`/etc/rancher/k3s/config.yaml`) to open NodePorts only on Tailscale addresses (`100.64.0.0/10`) and localhost. A `DROP` rule in `INPUT` can't do this job, because kube-proxy redirects NodePort traffic in `PREROUTING`, before `INPUT` ever sees it. Localhost is kept because `tailscale serve` proxies to `127.0.0.1:30300` and `127.0.0.1:31322`.
 
@@ -67,7 +68,7 @@ The port 22 `DROP` comes from **`ssh-tailscale-only.service`**. It re-adds the r
 | SSH (22) | ✅ | 🔒 dropped by firewall | 🔒 router + firewall |
 | ArgoCD / postgres-mcp / 9router (NodePorts) | ✅ | 🔒 k3s only listens on Tailscale + localhost | 🔒 |
 | CasaOS (80) | ✅ | ✅ open on purpose (photo/drive browsing at home) | 🔒 router (IPv4) |
-| Ollama (11434) | ❌ | ❌ | ❌ (listens on localhost only) |
+| Ollama (11434) | ✅ `http://sai:11434` | 🔒 dropped by firewall | 🔒 router + firewall |
 | Public apps via Cloudflare tunnel | No inbound port at all | | |
 
 **Cloudflare tunnel:** `cloudflared` connects *outwards* to Cloudflare and keeps that connection open, and visitors' requests travel back along it. Nothing on the server waits for connections from the internet.
@@ -79,7 +80,7 @@ The port 22 `DROP` comes from **`ssh-tailscale-only.service`**. It re-adds the r
 ```bash
 sudo iptables -S INPUT                 # IPv4 rules, top to bottom
 sudo ip6tables -S INPUT                # IPv6 rules
-systemctl status ssh-tailscale-only    # the SSH rule service
+systemctl status tailscale-only        # the SSH + Ollama rule service
 cat /etc/rancher/k3s/config.yaml       # NodePort address limits
 ss -ltnp                               # what's listening, and on which address
 ```
@@ -113,13 +114,31 @@ The first version of the script saved rules with `netfilter-persistent save`. Th
 Tailscale down and you're at the machine:
 
 ```bash
-sudo systemctl stop ssh-tailscale-only       # SSH opens on every interface
-sudo systemctl start ssh-tailscale-only      # close it again afterwards
+sudo systemctl stop tailscale-only           # SSH and Ollama open on every interface
+sudo systemctl start tailscale-only          # close them again afterwards
 ```
 
 Undo everything:
 
 ```bash
-sudo systemctl disable --now ssh-tailscale-only && sudo rm /etc/systemd/system/ssh-tailscale-only.service
+sudo rm /etc/systemd/system/ollama.service.d/override.conf && sudo systemctl daemon-reload && sudo systemctl restart ollama
+sudo systemctl disable --now tailscale-only && sudo rm /etc/systemd/system/tailscale-only.service
 sudo rm /etc/rancher/k3s/config.yaml && sudo systemctl restart k3s
 ```
+
+---
+
+## Ollama over Tailscale
+
+Ollama listens on `0.0.0.0:11434` ([`ollama-override.conf`](../../infrastructure/cluster/ollama-override.conf)) and `tailscale-only.service` drops 11434 on every interface except `tailscale0`. The override also makes Ollama refuse to start unless that firewall service is active, so it can't come up unprotected.
+
+From any tailnet device:
+
+```bash
+OLLAMA_HOST=http://sai:11434 ollama list
+curl http://sai:11434/api/version
+```
+
+Ollama has no login, so anyone on the tailnet can use it, including the ollama.com cloud models signed in on the server.
+
+**Why not `tailscale serve`:** while Ollama is bound to `127.0.0.1`, it rejects any request whose Host header isn't `localhost` with `403 Forbidden` (DNS-rebinding protection). `tailscale serve` passes the `sai.<tailnet>.ts.net` Host header through, so every request fails.

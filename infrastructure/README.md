@@ -26,8 +26,9 @@ infrastructure/
 └── cluster/
     ├── k3s-argocd/              # ArgoCD install (pinned v2.13.3) + NodePort patch
     ├── argocd-cm-defaults.yaml  # ArgoCD server config
-    ├── firewall-block-nodeports.sh  # tailnet-only access for NodePorts + SSH (run with sudo)
-    ├── ssh-tailscale-only.service   # boot-time DROP for SSH outside tailscale0 (v4 + v6)
+    ├── firewall-block-nodeports.sh  # tailnet-only access for NodePorts, SSH, Ollama (run with sudo)
+    ├── tailscale-only.service       # boot-time DROP for host ports 22, 11434 outside tailscale0 (v4 + v6)
+    ├── ollama-override.conf         # Ollama on 0.0.0.0, only starts if tailscale-only is active
     └── k3s-config.yaml              # /etc/rancher/k3s/config.yaml: NodePorts on Tailscale IPs + localhost only
 ```
 
