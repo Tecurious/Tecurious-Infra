@@ -15,7 +15,7 @@ knowledge-base/
 │   ├── docker-networking.md
 │   ├── postgres-mcp.md
 │   └── tailscale-networking.md
-├── Concepts/        # Topic deep-dives (MCP, Rclone, ...)
+├── Concepts/        # Topic deep-dives (MCP, Rclone, Firewall, ...)
 └── README.md
 ```
 
@@ -26,6 +26,8 @@ knowledge-base/
 - **Onboarding a service to k8s** → [infraRunbook/adding-a-service.md](infraRunbook/adding-a-service.md)
 - **Server filesystem layout** → [infraRunbook/directory-layout.md](infraRunbook/directory-layout.md)
 - **Terminal cheat sheet** → [infraRunbook/cheat-sheet.md](infraRunbook/cheat-sheet.md)
+- **How firewalls work (and ours)** → [Concepts/Firewall/firewalls-explained.md](Concepts/Firewall/firewalls-explained.md)
+- **Packet path under the hood (PREROUTING, DNAT, kernel)** → [Concepts/Firewall/packet-path-under-the-hood.md](Concepts/Firewall/packet-path-under-the-hood.md)
 
 ## Related
 
