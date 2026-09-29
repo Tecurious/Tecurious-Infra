@@ -21,21 +21,22 @@ How Tailscale creates a secure, zero-config mesh VPN on top of WireGuard — and
 
 ### WireGuard Tunnel — How It Works
 
-```mermaid
-sequenceDiagram
-    participant A as Peer A (your Mac)
-    participant B as Peer B (your server)
-
-    Note over A,B: Both peers already know each other's public key
-
-    A->>B: Handshake Initiation (Noise IK protocol)
-    B-->>A: Handshake Response
-    Note over A,B: Symmetric session keys derived (ChaCha20-Poly1305)
-
-    A->>B: Encrypted UDP packet (data)
-    B-->>A: Encrypted UDP packet (response)
-
-    Note over A,B: No "connection" — just authenticated UDP packets<br/>Keys rotate every 2 minutes automatically
+```text
+  Peer A (your Mac)                               Peer B (your server)
+         │                                                  │
+         │   both peers already know each other's public key│
+         │                                                  │
+         │──── 1. Handshake Initiation (Noise IK) ─────────>│
+         │<─── 2. Handshake Response ───────────────────────│
+         │                                                  │
+         │   symmetric session keys derived                 │
+         │   (ChaCha20-Poly1305)                            │
+         │                                                  │
+         │════ 3. Encrypted UDP packet (data) ═════════════>│
+         │<═══ 4. Encrypted UDP packet (response) ══════════│
+         │                                                  │
+         │   no "connection": just authenticated UDP packets│
+         │   keys rotate every 2 minutes automatically      │
 ```
 
 ### Key Concept: Cryptokey Routing
@@ -66,34 +67,30 @@ Tailscale wraps WireGuard and automates everything: key exchange, NAT traversal,
 
 ### Architecture
 
-```mermaid
-flowchart TD
-    classDef coord fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px;
-    classDef derp fill:#fce4ec,stroke:#e91e63,stroke-width:2px;
-    classDef node fill:#e8f5e9,stroke:#4caf50,stroke-width:2px;
-    classDef key fill:#fff8e1,stroke:#ff8f00,stroke-width:2px;
+```text
+                    Tailscale's cloud (control plane)
+   ┌───────────────────────────┐        ┌───────────────────────────┐
+   │ Coordination Server       │        │ DERP Relay Servers        │
+   │ login, key exchange, ACLs │        │ fallback if direct fails  │
+   └─────────────▲─────────────┘        └─────────────▲─────────────┘
+                 ┊ every device registers             ┊ used only when NAT
+                 ┊ and exchanges keys                 ┊ blocks a direct path
+                 ┊                                    ┊
+   ┌─────────────┊─────── Your tailnet (mesh) ────────┊──────────────┐
+   │             ┊                                    ┊              │
+   │      ┌──────┴───────┐   WireGuard tunnel   ┌─────┴────────┐     │
+   │      │ MacBook      │◄════════════════════►│ Linux Server │     │
+   │      │ 100.64.0.1   │   (direct P2P)       │ 100.64.0.2   │     │
+   │      └──────▲───────┘                      └──────▲───────┘     │
+   │             ║                                     ║             │
+   │             ║ WireGuard  ┌──────────────┐ WireGuard ║           │
+   │             ╚═══════════►│ iPhone       │◄══════════╝           │
+   │                          │ 100.64.0.3   │                       │
+   │                          └──────────────┘                       │
+   └─────────────────────────────────────────────────────────────────┘
 
-    subgraph Tailscale Cloud ["Tailscale Coordination Server"]
-        Coord["Coordination Server<br/>(login, key exchange, ACLs)"]:::coord
-        DERP["DERP Relay Servers<br/>(fallback when direct fails)"]:::derp
-    end
-
-    subgraph YourDevices ["Your Tailnet (Mesh)"]
-        Mac["MacBook<br/>100.64.0.1"]:::node
-        Server["Linux Server<br/>100.64.0.2"]:::node
-        Phone["iPhone<br/>100.64.0.3"]:::node
-    end
-
-    Mac <-->|"WireGuard tunnel<br/>(direct peer-to-peer)"| Server
-    Mac <-->|"WireGuard tunnel"| Phone
-    Server <-->|"WireGuard tunnel"| Phone
-
-    Mac -.->|"Register + exchange keys"| Coord
-    Server -.->|"Register + exchange keys"| Coord
-    Phone -.->|"Register + exchange keys"| Coord
-
-    Mac -. "Fallback relay<br/>(only if NAT blocks direct)" .-> DERP
-    Server -. "Fallback relay" .-> DERP
+   ════  data plane: your encrypted traffic, straight device to device
+   ┊┊┊┊  control plane: keys, addresses and ACLs only, never your data
 ```
 
 ### What Tailscale Does vs. What WireGuard Does
@@ -115,23 +112,17 @@ flowchart TD
 
 Tailscale assigns each device a **stable IP** from the CGNAT range `100.64.0.0/10`. This range is reserved by IANA and doesn't collide with typical LAN subnets (`192.168.x.x`, `10.x.x.x`).
 
-```mermaid
-flowchart LR
-    classDef cgnat fill:#fff3e0,stroke:#f57c00,stroke-width:2px;
-    classDef pub fill:#e8f5e9,stroke:#388e3c,stroke-width:2px;
-    classDef priv fill:#e3f2fd,stroke:#1976d2,stroke-width:2px;
-
-    subgraph Addressing ["IP Address Spaces"]
-        direction TB
-        PUB["Public IPs<br/>e.g. 203.0.113.50<br/>(your server's real IP)"]:::pub
-        PRIV["Private LAN IPs<br/>192.168.1.0/24 or 10.0.0.0/8<br/>(your home/office router)"]:::priv
-        TS["Tailscale IPs<br/>100.64.0.0/10 (CGNAT)<br/>(overlay — no conflict)"]:::cgnat
-    end
-
-    PUB --- PRIV
-    PRIV --- TS
-
-    style Addressing fill:#fafafa,stroke:#ccc
+```text
+   ┌──────────────────────────────────────────────────────────────┐
+   │ Public IPs          e.g. 203.0.113.50                        │
+   │ what the internet sees (your router's / server's real IP)    │
+   ├──────────────────────────────────────────────────────────────┤
+   │ Private LAN IPs     192.168.1.0/24 or 10.0.0.0/8             │
+   │ your home / office network, behind the router                │
+   ├──────────────────────────────────────────────────────────────┤
+   │ Tailscale IPs       100.64.0.0/10 (CGNAT range)              │
+   │ an overlay on top: reserved range, no clash with the above   │
+   └──────────────────────────────────────────────────────────────┘
 ```
 
 ### Your Tailnet Example
@@ -150,24 +141,41 @@ flowchart LR
 
 Most devices sit behind NAT (home routers, corporate firewalls). Tailscale uses multiple strategies to establish **direct** peer-to-peer WireGuard tunnels:
 
-```mermaid
-flowchart TD
-    classDef success fill:#c8e6c9,stroke:#388e3c,stroke-width:2px;
-    classDef fallback fill:#ffecb3,stroke:#f57c00,stroke-width:2px;
-    classDef fail fill:#ffcdd2,stroke:#d32f2f,stroke-width:2px;
-
-    Start["Device A wants to reach Device B"] --> STUN
-    
-    STUN["1. STUN Discovery<br/>Both peers discover their<br/>public IP:port via STUN servers"]
-    STUN --> DirectTry
-
-    DirectTry{"2. Can peers reach<br/>each other directly?"}
-    DirectTry -->|"Yes — UDP hole-punching works"| Direct["✅ Direct P2P tunnel<br/>(best latency)"]:::success
-    DirectTry -->|"No — hard NAT / firewall"| DERP["3. DERP Relay<br/>(encrypted relay via Tailscale)"]:::fallback
-
-    DERP --> Upgrade{"4. Keep trying<br/>direct path?"}
-    Upgrade -->|"NAT opens up"| Direct
-    Upgrade -->|"Still blocked"| Stay["Stay on DERP relay<br/>(still encrypted, just higher latency)"]:::fallback
+```text
+   ┌─────────────────────────────────────┐
+   │ Device A wants to reach Device B    │
+   └──────────────────┬──────────────────┘
+                      ▼
+   ┌─────────────────────────────────────┐
+   │ 1. STUN discovery                   │
+   │ both peers learn their own public   │
+   │ IP:port from STUN servers           │
+   └──────────────────┬──────────────────┘
+                      ▼
+   ┌─────────────────────────────────────┐
+   │ 2. Can the peers reach each other   │
+   │    directly?                        │
+   └───────┬─────────────────────┬───────┘
+           │ yes: UDP            │ no: hard NAT
+           │ hole-punching works │ or firewall
+           ▼                     ▼
+   ┌────────────────┐   ┌─────────────────────────┐
+   │ Direct P2P     │   │ 3. DERP relay           │
+   │ tunnel         │   │ encrypted, relayed via  │
+   │ (best latency) │   │ Tailscale's servers     │
+   └────────────────┘   └────────────┬────────────┘
+           ▲                         ▼
+           │            ┌─────────────────────────┐
+           │ NAT opens  │ 4. Keep trying the      │
+           └────────────┤    direct path          │
+             up         └────────────┬────────────┘
+                                     │ still blocked
+                                     ▼
+                        ┌─────────────────────────┐
+                        │ Stay on DERP relay      │
+                        │ still encrypted, just   │
+                        │ higher latency          │
+                        └─────────────────────────┘
 ```
 
 ### Check Your Connection Type
@@ -219,24 +227,25 @@ tailscale up --ssh
 ssh user@server.tailnet-abc.ts.net
 ```
 
-```mermaid
-sequenceDiagram
-    participant Mac as MacBook
-    participant TS as Tailscale Agent (Server)
-    participant SSHD as Server sshd
+```text
+   MacBook                 Tailscale agent (server)          Server sshd
+      │                               │                           │
+      │──── SSH to server:22 ────────>│                           │
+      │                               │ intercepts port 22        │
+      │                               │ checks the Mac's          │
+      │                               │ Tailscale identity        │
+      │                               │ against the ACL policy    │
+      │                               │                           │
+   ── if allowed by the ACL ─────────────────────────────────────────
+      │                               │── forward as the ────────>│
+      │                               │   authorized user         │
+      │<─────────────── shell session opened ─────────────────────│
+      │                               │                           │
+   ── if denied by the ACL ──────────────────────────────────────────
+      │<──── connection refused ──────│                           │
+      │                               │                           │
 
-    Mac->>TS: SSH connection to server:22
-    Note over TS: Tailscale intercepts on port 22
-    TS->>TS: Check Tailscale identity of Mac
-    TS->>TS: Evaluate ACL policy
-    
-    alt Allowed by ACL
-        TS->>SSHD: Forward connection as authorized user
-        SSHD-->>Mac: Shell session opened
-        Note over Mac,SSHD: No SSH keys exchanged<br/>Identity = Tailscale login
-    else Denied by ACL
-        TS-->>Mac: Connection refused
-    end
+   No SSH keys are exchanged: your identity is your Tailscale login.
 ```
 
 ### SSH Config for Convenience
@@ -262,25 +271,26 @@ Then just: `ssh server`
 
 Putting it all together: what happens when your Mac connects to a service on your Linux server over Tailscale.
 
-```mermaid
-sequenceDiagram
-    participant App as App on Mac<br/>(curl, SSH, psql)
-    participant TS_Mac as Tailscale Agent<br/>(Mac)
-    participant WG as WireGuard Tunnel<br/>(encrypted UDP)
-    participant TS_Server as Tailscale Agent<br/>(Server)
-    participant Service as Service<br/>(sshd, postgres, ollama)
+```text
+   YOUR MAC                                              SERVER
+   ┌────────────────────┐                              ┌────────────────────┐
+   │ App                │                              │ Service            │
+   │ curl, ssh, psql    │                              │ sshd, postgres,    │
+   │                    │                              │ ollama             │
+   └─────────┬──────────┘                              └─────────▲──────────┘
+             │ 1. connect to                                     │ 5. hands the
+             │    100.64.0.2:5432                                │    data to the
+             ▼                                                   │    service
+   ┌────────────────────┐                              ┌─────────┴──────────┐
+   │ Tailscale (Mac)    │  3. encrypted UDP packet     │ Tailscale (server) │
+   │ 2. finds peer      │═════════════════════════════►│ 4. decrypts        │
+   │    100.64.0.2,     │  WireGuard tunnel to the     │                    │
+   │    encrypts with   │  server's real endpoint      │                    │
+   │ ChaCha20-Poly1305  │  (NAT-traversed)             │                    │
+   └────────────────────┘                              └────────────────────┘
 
-    App->>TS_Mac: Connect to 100.64.0.2:5432
-    Note over TS_Mac: Looks up peer 100.64.0.2<br/>in local WireGuard state
-
-    TS_Mac->>WG: Encrypt with WireGuard<br/>(ChaCha20-Poly1305)
-    WG->>TS_Server: UDP packet to server's<br/>real endpoint (NAT-traversed)
-
-    TS_Server->>Service: Decrypt + forward to<br/>localhost:5432
-    Service-->>TS_Server: Response data
-    TS_Server-->>WG: Encrypt response
-    WG-->>TS_Mac: UDP packet back
-    TS_Mac-->>App: Decrypted response
+   The response takes the same path back: the server's Tailscale encrypts it,
+   the Mac's Tailscale decrypts it and hands it to the app.
 ```
 
 ---
@@ -333,32 +343,26 @@ tailscale funnel 443
 
 [Headscale](https://github.com/juanfont/headscale) is an **open-source, self-hosted** replacement for Tailscale's coordination server. It implements the Tailscale control plane API, so you can use the **official Tailscale clients** while keeping full control of the coordination infrastructure.
 
-```mermaid
-flowchart TD
-    classDef hs fill:#ede7f6,stroke:#673ab7,stroke-width:2px;
-    classDef node fill:#e8f5e9,stroke:#4caf50,stroke-width:2px;
-    classDef derp fill:#fce4ec,stroke:#e91e63,stroke-width:2px;
-
-    subgraph SelfHosted ["Your Infrastructure"]
-        HS["Headscale Server<br/>(replaces Tailscale coordination)"]:::hs
-        DERP_Self["Self-hosted DERP relay<br/>(optional)"]:::derp
-    end
-
-    subgraph Devices ["Your Devices (standard Tailscale clients)"]
-        Mac["MacBook"]:::node
-        Server["Linux Server"]:::node
-        Phone["Android / iOS"]:::node
-    end
-
-    Mac <-->|"WireGuard P2P"| Server
-    Mac <-->|"WireGuard P2P"| Phone
-    Server <-->|"WireGuard P2P"| Phone
-
-    Mac -.->|"Register + keys"| HS
-    Server -.->|"Register + keys"| HS
-    Phone -.->|"Register + keys"| HS
-
-    Mac -. "Relay fallback" .-> DERP_Self
+```text
+                    Your infrastructure (self-hosted)
+   ┌───────────────────────────┐        ┌───────────────────────────┐
+   │ Headscale Server          │        │ Self-hosted DERP relay    │
+   │ replaces Tailscale's      │        │ (optional)                │
+   │ coordination server       │        │                           │
+   └─────────────▲─────────────┘        └─────────────▲─────────────┘
+                 ┊ every device registers             ┊ relay fallback
+                 ┊ and exchanges keys                 ┊
+                 ┊                                    ┊
+   ┌─────────────┊── Your devices (official Tailscale clients) ──────┐
+   │             ┊                                    ┊              │
+   │      ┌──────┴───────┐     WireGuard P2P    ┌─────┴────────┐     │
+   │      │ MacBook      │◄════════════════════►│ Linux Server │     │
+   │      └──────▲───────┘                      └──────▲───────┘     │
+   │             ║                                     ║             │
+   │             ║ WireGuard  ┌──────────────┐ WireGuard ║           │
+   │             ╚═══════════►│ Android/iOS  │◄══════════╝           │
+   │                          └──────────────┘                       │
+   └─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Headscale vs. Tailscale
