@@ -14,6 +14,7 @@ From first principles to how saiserver is protected.
 10. [Glossary](#10-glossary)
 
 For the day-to-day commands and break-glass steps, see the runbook: [infraRunbook/firewall.md](../../infraRunbook/firewall.md).
+For how packets move through the kernel, see [Packet Path: Under the Hood](packet-path-under-the-hood.md).
 
 ---
 
@@ -219,7 +220,7 @@ flowchart LR
     POST --> OUTIF(["Packet leaves"])
 ```
 
-The key insight: **INPUT only sees traffic for programs on the host itself.** Traffic that gets redirected (DNAT) in PREROUTING to a container or pod goes through **FORWARD** instead, and never touches INPUT. This is behind two of the nuances in section 7.
+The key insight: **INPUT only sees traffic for programs on the host itself.** Traffic that gets redirected (DNAT) in PREROUTING to a container or pod goes through **FORWARD** instead, and never touches INPUT. This is behind two of the nuances in section 7. For a step-by-step walk through PREROUTING, and where these rules live in the kernel, see [Packet Path: Under the Hood](packet-path-under-the-hood.md).
 
 ### Tables and chains
 - **Tables** group rules by job: `filter` (allow/deny), `nat` (rewrite addresses), `mangle`, `raw`.
