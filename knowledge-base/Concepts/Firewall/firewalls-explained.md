@@ -52,8 +52,8 @@ Data travels in small chunks called **packets**. Each packet carries a header th
 
 ```
 ┌──────────────────────── packet ────────────────────────┐
-│ Source IP     100.118.241.69   (who sent it)           │
-│ Dest IP       100.117.254.105  (who it's for)          │
+│ Source IP     100.64.0.20   (who sent it)           │
+│ Dest IP       100.64.0.10  (who it's for)          │
 │ Protocol      TCP                                      │
 │ Source port   51234            (random, on the sender) │
 │ Dest port     22               (the service: SSH)      │
@@ -69,7 +69,7 @@ The address of a machine on a network. Our server has several, one per network i
 |---|---|
 | `127.0.0.1` | Itself (loopback, `lo`). Never leaves the machine |
 | `192.168.1.x` | Home LAN (Wi-Fi `wlp4s0` or cable `enp2s0`). Private, not routable on the internet |
-| `100.x.x.x` | Tailscale (`tailscale0`). Private to our tailnet |
+| `100.x.x.x` | Tailscale (`tailscale0`). Private to our tailnet. Examples in this guide: `100.64.0.10` = server, `100.64.0.20` = Mac |
 | `2600:…` | Public IPv6. Globally routable: the internet can address it directly |
 
 ### Ports
@@ -127,7 +127,7 @@ Connection tracking table (simplified)
 ┌──────────┬─────────────────────┬─────────────────────┬─────────────┐
 │ proto    │ from                │ to                  │ state       │
 ├──────────┼─────────────────────┼─────────────────────┼─────────────┤
-│ tcp      │ 100.118.241.69:51234│ 100.117.254.105:22  │ ESTABLISHED │
+│ tcp      │ 100.64.0.20:51234│ 100.64.0.10:22  │ ESTABLISHED │
 │ tcp      │ 192.168.1.233:40112 │ 151.101.1.1:443     │ ESTABLISHED │  ← our apt update
 │ tcp      │ 192.168.1.50:61022  │ 192.168.1.233:22    │ SYN_SENT    │  ← dropped, never completes
 └──────────┴─────────────────────┴─────────────────────┴─────────────┘
@@ -421,7 +421,7 @@ sequenceDiagram
     participant I as saiserver INPUT
     participant C as TS-ONLY
     participant S as sshd
-    M->>T: SYN to 100.117.254.105:22
+    M->>T: SYN to 100.64.0.10:22
     T->>I: arrives on tailscale0
     I->>C: port 22, jump
     C->>I: from tailscale0, RETURN

@@ -4,6 +4,8 @@ How a packet actually moves through saiserver, why PREROUTING decides which fire
 
 Read [Firewalls Explained](firewalls-explained.md) first if terms like *port*, *INPUT* or *DNAT* are new.
 
+**Interactive version:** [`packet-path-explorer.html`](packet-path-explorer.html) lets you pick a connection and step the packet through the diagram, watching its address get rewritten at PREROUTING. GitHub shows HTML as code, so open it in a browser: clone the repo and open the file, or on GitHub click **Raw**, save the page, and open it locally.
+
 1. [Containers are little machines behind the server](#1-containers-are-little-machines-behind-the-server)
 2. [PREROUTING: the relabelling desk](#2-prerouting-the-relabelling-desk)
 3. [Five real connections, step by step](#3-five-real-connections-step-by-step)
@@ -23,7 +25,7 @@ Docker containers and Kubernetes pods don't run as normal programs on the server
 ```
 saiserver
 ├── Host programs (sshd, ollama, casaos)   → the server's own addresses
-│                                            192.168.1.x · 100.117.254.105 · 127.0.0.1
+│                                            192.168.1.x · 100.64.0.10 · 127.0.0.1
 │
 └── Private internal networks
     ├── Postgres container (dev-strom)     → 172.x.x.x   (Docker's network)
@@ -90,14 +92,16 @@ flowchart LR
 
 ## 3. Five real connections, step by step
 
-Container and pod addresses (`172.x`, `10.42.x`) are examples. "Home Wi-Fi device" means any phone or laptop not using Tailscale.
+Step through these in [`packet-path-explorer.html`](packet-path-explorer.html).
+
+Tailscale addresses (`100.64.0.10` = server, `100.64.0.20` = Mac), container and pod addresses (`172.x`, `10.42.x`) are examples. "Home Wi-Fi device" means any phone or laptop not using Tailscale.
 
 | Connection | To, on arrival | After PREROUTING | Road | Checked by | Result |
 |---|---|---|---|---|---|
-| SSH from Mac (Tailscale) | `100.117.254.105:22` | unchanged | INPUT | TS-ONLY | ✅ allowed |
+| SSH from Mac (Tailscale) | `100.64.0.10:22` | unchanged | INPUT | TS-ONLY | ✅ allowed |
 | Ollama from home Wi-Fi | `192.168.1.233:11434` | unchanged | INPUT | TS-ONLY | 🔒 dropped (timeout) |
 | Postgres (Docker) from home Wi-Fi | `192.168.1.233:5432` | `172.x.x.x:5432` | FORWARD | Docker's rules | ⚠️ allowed, not on purpose |
-| ArgoCD NodePort from Mac (Tailscale) | `100.117.254.105:31322` | `10.42.0.x:8080` | FORWARD | KUBE-FORWARD | ✅ allowed |
+| ArgoCD NodePort from Mac (Tailscale) | `100.64.0.10:31322` | `10.42.0.x:8080` | FORWARD | KUBE-FORWARD | ✅ allowed |
 | ArgoCD NodePort from home Wi-Fi | `192.168.1.233:31322` | unchanged | INPUT | nobody listening | 🔒 connection refused |
 
 ### The Postgres case, in detail
@@ -270,7 +274,7 @@ Typical shape, with our `nodeport-addresses` setting (chain suffixes and pod IP 
 
 ```bash
 # nat table: only for the addresses we allowed
--A KUBE-SERVICES -d 100.117.254.105/32 -j KUBE-NODEPORTS
+-A KUBE-SERVICES -d 100.64.0.10/32 -j KUBE-NODEPORTS
 -A KUBE-SERVICES -d 127.0.0.1/32       -j KUBE-NODEPORTS
 # NodePort 31322 → the argocd-server service → one pod
 -A KUBE-NODEPORTS -p tcp --dport 31322 -j KUBE-EXT-...

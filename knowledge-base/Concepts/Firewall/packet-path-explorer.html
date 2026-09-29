@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Packet Path Explorer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Source+Sans+3:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --bg:#eef1f0; --surface:#ffffff; --ink:#17212b; --muted:#5a6772; --line:#cfd8dc; --soft:#e4eaea;
+  --pre:#6d45c9; --pre-bg:#efe9fb;
+  --inp:#2463c9; --inp-bg:#e6effc;
+  --fwd:#b86e0c; --fwd-bg:#fbf0e0;
+  --ok:#1d7f48; --ok-bg:#e2f3e9;
+  --bad:#bf2f25; --bad-bg:#fbe5e3;
+  --warn:#a55a00;
+  --dim:#b9c3c8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#101518; --surface:#182026; --ink:#e3e9ee; --muted:#96a3ad; --line:#2d3a42; --soft:#1f2a31;
+    --pre:#a98af0; --pre-bg:#2a2340;
+    --inp:#6fa2f2; --inp-bg:#1b2940;
+    --fwd:#e9a64a; --fwd-bg:#352817;
+    --ok:#62cf8f; --ok-bg:#15301f;
+    --bad:#f08a80; --bad-bg:#3a1b19;
+    --warn:#f0b35c;
+    --dim:#3c4a52;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#101518; --surface:#182026; --ink:#e3e9ee; --muted:#96a3ad; --line:#2d3a42; --soft:#1f2a31;
+  --pre:#a98af0; --pre-bg:#2a2340;
+  --inp:#6fa2f2; --inp-bg:#1b2940;
+  --fwd:#e9a64a; --fwd-bg:#352817;
+  --ok:#62cf8f; --ok-bg:#15301f;
+  --bad:#f08a80; --bad-bg:#3a1b19;
+  --warn:#f0b35c;
+  --dim:#3c4a52;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Source Sans 3",system-ui,sans-serif;padding-inline:16px;padding-block:28px 56px}
+.wrap{max-width:980px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:30px;line-height:1.15;margin:0 0 6px;font-weight:700;text-wrap:balance}
+h2{font-size:20px;margin:0;font-weight:600;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.lede{color:var(--muted)}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace}
+.eyebrow{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rule{background:var(--pre-bg);border-left:4px solid var(--pre);padding:12px 16px;border-radius:4px;font-weight:600;max-width:none}
+
+/* scenario picker */
+.picker{display:flex;flex-wrap:wrap;gap:8px}
+.picker button{font:inherit;font-size:14px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 12px;border-radius:999px;cursor:pointer;display:flex;align-items:center;gap:8px}
+.picker button[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.picker button:focus-visible,.nav button:focus-visible{outline:2px solid var(--pre);outline-offset:2px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--bad)} .dot.warn{background:var(--warn)}
+
+/* stage */
+.stage{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:14px}
+.fig{overflow-x:auto}
+.fig svg{display:block;width:100%;min-width:640px;height:auto}
+.below{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.4fr);gap:14px}
+@media (max-width:720px){.below{grid-template-columns:1fr}}
+
+/* envelope */
+.env{border:1px dashed var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:6px;background:var(--bg)}
+.env .row{display:grid;grid-template-columns:92px minmax(0,1fr);gap:8px;align-items:baseline}
+.env .k{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.env .v{font-family:"JetBrains Mono",monospace;font-size:14px;word-break:break-word}
+.env .old{text-decoration:line-through;color:var(--muted);margin-right:6px}
+.env .new{color:var(--pre);font-weight:700}
+.env .note{font-size:13px;color:var(--pre)}
+
+/* narration */
+.narr{display:flex;flex-direction:column;gap:10px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:0;padding:0}
+.steps li{font-family:"JetBrains Mono",monospace;font-size:12px;padding:3px 8px;border-radius:4px;background:var(--soft);color:var(--muted)}
+.steps li.on{background:var(--ink);color:var(--bg)}
+.steps li.done{color:var(--ink)}
+.narr h3{margin:0;font-size:18px;font-weight:600}
+.verdict{font-weight:600}
+.verdict.ok{color:var(--ok)} .verdict.bad{color:var(--bad)} .verdict.warn{color:var(--warn)}
+.nav{display:flex;gap:8px;flex-wrap:wrap}
+.nav button{font:inherit;font-size:14px;font-weight:600;padding:8px 14px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.nav button.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.nav button:disabled{opacity:.4;cursor:default}
+
+/* table */
+.tbl{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:15px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:"JetBrains Mono",monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}
+td .mono{font-size:13px}
+.tag{font-family:"JetBrains Mono",monospace;font-size:12px;padding:1px 7px;border-radius:4px;white-space:nowrap}
+.tag.inp{background:var(--inp-bg);color:var(--inp)} .tag.fwd{background:var(--fwd-bg);color:var(--fwd)}
+.tag.ok{background:var(--ok-bg);color:var(--ok)} .tag.bad{background:var(--bad-bg);color:var(--bad)} .tag.warn{background:var(--fwd-bg);color:var(--warn)}
+
+/* svg */
+.box rect{stroke-width:1.5}
+.box .t{font:600 14px "Source Sans 3",system-ui,sans-serif;fill:var(--ink)}
+.box .s{font:400 11.5px "JetBrains Mono",monospace;fill:var(--muted)}
+.b-arr rect{fill:var(--surface);stroke:var(--line)}
+.b-pre rect{fill:var(--pre-bg);stroke:var(--pre)}
+.b-inp rect{fill:var(--inp-bg);stroke:var(--inp)}
+.b-fwd rect{fill:var(--fwd-bg);stroke:var(--fwd)}
+.b-app rect{fill:var(--surface);stroke:var(--line)}
+.box.dim rect{fill:var(--bg);stroke:var(--dim);stroke-dasharray:5 4}
+.box.dim .t,.box.dim .s{fill:var(--dim)}
+.diamond{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+.dlab{font:600 12px "Source Sans 3",system-ui,sans-serif;fill:var(--ink)}
+.edge{fill:none;stroke:var(--line);stroke-width:2.5;transition:stroke .3s}
+.edge.on{stroke:var(--ink)}
+.elab{font:500 11px "JetBrains Mono",monospace;fill:var(--muted)}
+.notvisited{font:600 11px "JetBrains Mono",monospace;fill:var(--muted);letter-spacing:.05em}
+#pkt{transition:transform .6s cubic-bezier(.4,0,.2,1)}
+#pkt .p{fill:var(--ink)} #pkt .pl{font:700 10px "JetBrains Mono",monospace;fill:var(--bg)}
+.mark-x{stroke:var(--bad);stroke-width:4;stroke-linecap:round}
+.mark-ok{fill:var(--ok)}
+.mark-ref{font:700 11px "JetBrains Mono",monospace;fill:var(--warn)}
+.desk-flash{fill:none;stroke:var(--pre);stroke-width:3;opacity:0}
+.desk-flash.on{animation:flash 1.2s ease-out 1}
+@keyframes flash{0%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){#pkt{transition:none}.desk-flash.on{animation:none}.edge{transition:none}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">saiserver · netfilter · how a packet finds its way</div>
+    <h1>Packet Path Explorer</h1>
+    <p class="lede">Pick a connection, then step it through the server. Watch the envelope's <strong>To</strong> address at the PREROUTING desk: whether it gets rewritten decides which road the packet takes.</p>
+  </header>
+
+  <p class="rule">PREROUTING can change the address. The routing decision reads the address after the change. So the change decides the road: this server (INPUT) or a container behind it (FORWARD).</p>
+
+  <section class="stage" aria-label="Packet walkthrough">
+    <div class="picker" role="group" aria-label="Choose a connection" id="picker"></div>
+    <div class="fig" id="fig"></div>
+    <div class="below">
+      <div class="env" aria-live="polite">
+        <div class="eyebrow">The packet's envelope</div>
+        <div class="row"><span class="k">From</span><span class="v" id="e-from"></span></div>
+        <div class="row"><span class="k">Arrived on</span><span class="v" id="e-if"></span></div>
+        <div class="row"><span class="k">To</span><span class="v" id="e-to"></span></div>
+        <div class="note" id="e-note"></div>
+      </div>
+      <div class="narr">
+        <ol class="steps" id="steps"></ol>
+        <h3 id="n-title"></h3>
+        <p id="n-text"></p>
+        <p class="verdict" id="n-verdict"></p>
+        <div class="nav">
+          <button type="button" id="b-back">Back</button>
+          <button type="button" id="b-next" class="primary">Next step</button>
+          <button type="button" id="b-replay">Start over</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:12px">
+    <h2>All five connections at a glance</h2>
+    <div class="tbl">
+      <table>
+        <thead><tr><th>Connection</th><th>Address on arrival</th><th>After PREROUTING</th><th>Road</th><th>Checked by</th><th>Result</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="lede">Tailscale addresses (100.64.0.10 = server, 100.64.0.20 = Mac), container and pod addresses (172.x, 10.42.x) are examples of Docker's and Kubernetes' internal networks. The home Wi-Fi device is any phone or laptop not using Tailscale.</p>
+  </section>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2>The mind map in one picture</h2>
+    <div class="fig" id="mini"></div>
+  </section>
+</div>
+
+<script>
+(function(){
+const S = [
+ { id:"ssh", label:"SSH from your Mac (Tailscale)", res:"ok",
+   from:"Your Mac · 100.64.0.20", iface:"tailscale0", to0:"100.64.0.10 : 22", to1:null,
+   preNote:"No rewrite rule for port 22.", road:"input", check:"TS-ONLY", table:"allowed",
+   steps:[
+    ["Arrives", "Your Mac sends the first packet of an SSH connection. It comes out of the Tailscale tunnel, so it arrives on tailscale0."],
+    ["PREROUTING", "The relabelling desk looks for a rewrite rule for port 22. Docker and k3s never made one, so the envelope is left alone."],
+    ["Routing decision", "The kernel reads the To address: 100.64.0.10 is one of this server's own addresses. The packet is for a program on this machine, so it takes the INPUT road."],
+    ["INPUT", "INPUT sends ports 22 and 11434 to our TS-ONLY chain. The packet came from tailscale0, so TS-ONLY lets it continue."],
+    ["Result", "sshd receives the packet and the connection starts."]],
+   verdict:["ok","Allowed: SSH over Tailscale works."] },
+ { id:"ollama", label:"Ollama from home Wi-Fi", res:"bad",
+   from:"Phone on Wi-Fi · 192.168.1.50", iface:"wlp4s0 (Wi-Fi)", to0:"192.168.1.233 : 11434", to1:null,
+   preNote:"No rewrite rule for port 11434.", road:"input", check:"TS-ONLY", table:"dropped",
+   steps:[
+    ["Arrives", "A phone on your home Wi-Fi, without Tailscale, tries Ollama at the server's Wi-Fi address. It arrives on wlp4s0."],
+    ["PREROUTING", "No rule for port 11434. Ollama is a normal program on the server, not a container, so nobody set up a rewrite. The envelope is unchanged."],
+    ["Routing decision", "192.168.1.233 is this server's own address, so the packet takes the INPUT road."],
+    ["INPUT", "Port 11434 goes to TS-ONLY. The packet came from wlp4s0, which is neither tailscale0 nor lo, so TS-ONLY drops it."],
+    ["Result", "The packet is thrown away with no reply. The phone waits, then shows a timeout."]],
+   verdict:["bad","Dropped: Ollama is Tailscale-only."] },
+ { id:"pg", label:"Postgres (Docker) from home Wi-Fi", res:"warn",
+   from:"Phone on Wi-Fi · 192.168.1.50", iface:"wlp4s0 (Wi-Fi)", to0:"192.168.1.233 : 5432", to1:"172.x.x.x : 5432",
+   preNote:"Rewritten by Docker's rule (DNAT): port 5432 → the Postgres container.", road:"forward", check:"Docker's rules", table:"allowed (gap)",
+   steps:[
+    ["Arrives", "A device on your home Wi-Fi connects to port 5432 at the server's Wi-Fi address. It arrives on wlp4s0."],
+    ["PREROUTING", "Docker put a rule at this desk when it published port 5432: anything for 5432 goes to the Postgres container. The desk crosses out the address and writes the container's address instead. This rewrite is called DNAT."],
+    ["Routing decision", "The kernel reads the To address now, after the rewrite: 172.x.x.x is not this server, it's a container behind it. So the server acts like a router and the packet takes the FORWARD road."],
+    ["FORWARD", "FORWARD checks Docker's rules, which allow traffic to published ports. INPUT, where TS-ONLY lives, is never visited, so our rule never gets a say."],
+    ["Result", "Postgres receives the connection. This is why 5432 is open to your home network even though the firewall blocks SSH and Ollama."]],
+   verdict:["warn","Allowed, and not on purpose: Docker's path skips TS-ONLY."] },
+ { id:"argo-ts", label:"ArgoCD NodePort from your Mac (Tailscale)", res:"ok",
+   from:"Your Mac · 100.64.0.20", iface:"tailscale0", to0:"100.64.0.10 : 31322", to1:"10.42.0.x : 8080",
+   preNote:"Rewritten by kube-proxy (k3s): NodePort 31322 → the ArgoCD pod.", road:"forward", check:"KUBE-FORWARD", table:"allowed",
+   steps:[
+    ["Arrives", "Your Mac opens ArgoCD on NodePort 31322 at the server's Tailscale address. It arrives on tailscale0."],
+    ["PREROUTING", "k3s (kube-proxy) put a rule at this desk: port 31322 on a Tailscale or localhost address goes to the ArgoCD pod. The address becomes the pod's."],
+    ["Routing decision", "10.42.0.x is a pod behind the server, not the server itself, so the packet takes the FORWARD road."],
+    ["FORWARD", "k3s' KUBE-FORWARD rules allow it through to the pod."],
+    ["Result", "The ArgoCD pod answers."]],
+   verdict:["ok","Allowed: NodePorts work over Tailscale."] },
+ { id:"argo-lan", label:"ArgoCD NodePort from home Wi-Fi", res:"bad",
+   from:"Phone on Wi-Fi · 192.168.1.50", iface:"wlp4s0 (Wi-Fi)", to0:"192.168.1.233 : 31322", to1:null,
+   preNote:"No rewrite: k3s only made rules for Tailscale and localhost addresses.", road:"input", check:"nobody listening", table:"refused",
+   refused:true,
+   steps:[
+    ["Arrives", "A device on your home Wi-Fi tries NodePort 31322 at the server's Wi-Fi address. It arrives on wlp4s0."],
+    ["PREROUTING", "Because of our nodeport-addresses setting, k3s only created rewrite rules for Tailscale (100.64.0.0/10) and localhost addresses. There is no rule for 192.168.1.233, so nothing is rewritten."],
+    ["Routing decision", "The address is still this server's own, so the packet takes the INPUT road, not FORWARD."],
+    ["INPUT", "Port 31322 isn't in TS-ONLY, and INPUT's default is allow, so the packet reaches the server."],
+    ["Result", "No program on the server listens on 31322. Only the pod does, behind a rewrite that never happened. The kernel answers \"connection refused\"."]],
+   verdict:["bad","Refused: the door to the pod only exists for Tailscale addresses."] }
+];
+
+const NS="http://www.w3.org/2000/svg";
+const P={arrive:[95,215],pre:[300,215],route:[480,215],input:[655,90],forward:[655,340],host:[835,90],cont:[835,340]};
+function el(t,a,p){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e;}
+function box(svg,cls,x,y,w,h,title,subs,id){
+  const g=el("g",{class:"box "+cls,id:id||""},svg);
+  el("rect",{x,y,width:w,height:h,rx:8},g);
+  const t=el("text",{class:"t",x:x+12,y:y+24},g); t.textContent=title;
+  subs.forEach((s,i)=>{const e=el("text",{class:"s",x:x+12,y:y+44+i*17},g);e.textContent=s;});
+  return g;
+}
+
+/* main diagram */
+const svg=el("svg",{viewBox:"0 0 920 440",role:"img","aria-label":"Packet path: arrive, PREROUTING, routing decision, then INPUT to host programs or FORWARD to containers and pods"});
+el("path",{class:"edge",id:"e1",d:"M170 215 H212"},svg);
+el("path",{class:"edge",id:"e2",d:"M388 215 H438"},svg);
+el("path",{class:"edge",id:"e3",d:"M480 173 V90 H575"},svg);
+el("path",{class:"edge",id:"e4",d:"M480 257 V340 H575"},svg);
+el("path",{class:"edge",id:"e5",d:"M735 90 H765"},svg);
+el("path",{class:"edge",id:"e6",d:"M735 340 H765"},svg);
+const l1=el("text",{class:"elab",x:490,y:128},svg); l1.textContent="for this server";
+const l2=el("text",{class:"elab",x:490,y:306},svg); l2.textContent="for a container / pod";
+
+box(svg,"b-arr",20,160,150,112,"Arrives on",["tailscale0","wlp4s0 (Wi-Fi)","lo (itself)"],"bx-arr");
+box(svg,"b-pre",212,140,176,150,"PREROUTING",["relabelling desk","Docker + k3s put","rewrite rules here","(DNAT)"],"bx-pre");
+el("rect",{class:"desk-flash",id:"flash",x:208,y:136,width:184,height:158,rx:10},svg);
+el("polygon",{class:"diamond",points:"480,173 522,215 480,257 438,215"},svg);
+const d1=el("text",{class:"dlab","text-anchor":"middle",x:480,y:211},svg); d1.textContent="for me?";
+const d2=el("text",{class:"dlab","text-anchor":"middle",x:480,y:227},svg); d2.textContent="(reads To)";
+box(svg,"b-inp",575,30,160,120,"INPUT",["host firewall","TS-ONLY:","ports 22, 11434"],"bx-inp");
+box(svg,"b-app",765,30,140,120,"Host programs",["sshd","ollama","casaos"],"bx-host");
+box(svg,"b-fwd",575,280,160,120,"FORWARD",["pass-through","DOCKER chains","KUBE-FORWARD"],"bx-fwd");
+box(svg,"b-app",765,280,140,120,"Containers & pods",["postgres 172.x","argocd 10.42.x","(behind the host)"],"bx-cont");
+const nvI=el("text",{class:"notvisited",x:655,y:166,"text-anchor":"middle"},svg);
+const nvF=el("text",{class:"notvisited",x:655,y:418,"text-anchor":"middle"},svg);
+const marks=el("g",{},svg);
+const pkt=el("g",{id:"pkt"},svg);
+el("rect",{class:"p",x:-22,y:-13,width:44,height:26,rx:4},pkt);
+el("path",{d:"M-22 -13 L0 3 L22 -13",fill:"none",stroke:"var(--bg)","stroke-width":1.5},pkt);
+document.getElementById("fig").appendChild(svg);
+
+/* state */
+let cur=S[2], step=1;
+try{const saved=localStorage.getItem("ppx-scn"); const f=S.find(s=>s.id===saved); if(f) cur=f;}catch(e){}
+
+const picker=document.getElementById("picker");
+S.forEach(s=>{
+  const b=document.createElement("button"); b.type="button"; b.id="scn-"+s.id;
+  b.innerHTML='<span class="dot '+s.res+'"></span>'+s.label;
+  b.addEventListener("click",()=>{cur=s;step=1;try{localStorage.setItem("ppx-scn",s.id)}catch(e){}render();});
+  picker.appendChild(b);
+});
+const stepsEl=document.getElementById("steps");
+["Arrive","PREROUTING","Route","Checkpoint","Result"].forEach((n,i)=>{const li=document.createElement("li");li.textContent=(i+1)+" "+n;stepsEl.appendChild(li);});
+
+function posFor(s,k){
+  if(k===1) return P.arrive; if(k===2) return P.pre; if(k===3) return P.route;
+  if(k===4) return s.road==="input"?P.input:P.forward;
+  if(s.res==="bad" && !s.refused) return P.input;
+  return s.road==="input"?P.host:P.cont;
+}
+function render(){
+  const s=cur;
+  S.forEach(x=>document.getElementById("scn-"+x.id).setAttribute("aria-pressed",x===s?"true":"false"));
+  const [x,y]=posFor(s,step);
+  pkt.style.transform="translate("+x+"px,"+y+"px)";
+  const on=id=>document.getElementById(id).classList;
+  ["e1","e2","e3","e4","e5","e6"].forEach(id=>on(id).remove("on"));
+  if(step>=2) on("e1").add("on");
+  if(step>=3) on("e2").add("on");
+  if(step>=4) on(s.road==="input"?"e3":"e4").add("on");
+  if(step>=5 && (s.res!=="bad"||s.refused)) on(s.road==="input"?"e5":"e6").add("on");
+  const inpDim = step>=4 && s.road!=="input", fwdDim = step>=4 && s.road!=="forward";
+  ["bx-inp","bx-host"].forEach(id=>document.getElementById(id).classList.toggle("dim",inpDim));
+  ["bx-fwd","bx-cont"].forEach(id=>document.getElementById(id).classList.toggle("dim",fwdDim));
+  nvI.textContent = inpDim ? "NEVER VISITED" : "";
+  nvF.textContent = fwdDim ? "NOT USED" : "";
+  marks.innerHTML="";
+  if(step===5){
+    if(s.res==="bad" && !s.refused){
+      el("line",{class:"mark-x",x1:630,y1:112,x2:680,y2:140},marks); el("line",{class:"mark-x",x1:680,y1:112,x2:630,y2:140},marks);
+    } else if(s.refused){
+      const t=el("text",{class:"mark-ref",x:835,y:168,"text-anchor":"middle"},marks); t.textContent="nothing listens on :31322";
+    } else {
+      const c=s.road==="input"?P.host:P.cont; el("circle",{class:"mark-ok",cx:c[0]+52,cy:c[1]-40,r:9},marks);
+    }
+  }
+  if(step===2 && s.to1){const f=document.getElementById("flash");f.classList.remove("on");void f.getBBox();f.classList.add("on");}
+  document.getElementById("e-from").textContent=s.from;
+  document.getElementById("e-if").textContent=s.iface;
+  const to=document.getElementById("e-to"), note=document.getElementById("e-note");
+  if(step>=2 && s.to1){ to.innerHTML='<span class="old">'+s.to0+'</span><span class="new">'+s.to1+'</span>'; }
+  else { to.textContent=s.to0; }
+  note.textContent = step>=2 ? s.preNote : "";
+  [...stepsEl.children].forEach((li,i)=>{li.className = i+1===step?"on":(i+1<step?"done":"");});
+  const [tt,tx]=s.steps[step-1];
+  document.getElementById("n-title").textContent=step+". "+tt;
+  document.getElementById("n-text").textContent=tx;
+  const v=document.getElementById("n-verdict");
+  v.textContent = step===5 ? s.verdict[1] : ""; v.className="verdict "+(step===5?s.verdict[0]:"");
+  document.getElementById("b-back").disabled = step===1;
+  document.getElementById("b-next").disabled = step===5;
+}
+document.getElementById("b-next").addEventListener("click",()=>{if(step<5){step++;render();}});
+document.getElementById("b-back").addEventListener("click",()=>{if(step>1){step--;render();}});
+document.getElementById("b-replay").addEventListener("click",()=>{step=1;render();});
+document.addEventListener("keydown",e=>{if(e.target.closest("button"))return; if(e.key==="ArrowRight"&&step<5){step++;render();} if(e.key==="ArrowLeft"&&step>1){step--;render();}});
+
+/* table */
+const tb=document.getElementById("tbody");
+S.forEach(s=>{
+  const tr=document.createElement("tr");
+  const road=s.road==="input"?'<span class="tag inp">INPUT</span>':'<span class="tag fwd">FORWARD</span>';
+  const rc=s.res==="ok"?"ok":(s.res==="warn"?"warn":"bad");
+  tr.innerHTML='<td>'+s.label+'</td><td class="mono">'+s.to0+'</td><td class="mono">'+(s.to1||"unchanged")+'</td><td>'+road+'</td><td>'+s.check+'</td><td><span class="tag '+rc+'">'+s.table+'</span></td>';
+  tb.appendChild(tr);
+});
+
+/* mini mind map */
+const m=el("svg",{viewBox:"0 0 920 250",role:"img","aria-label":"Mind map: was the address rewritten at PREROUTING? No leads to INPUT and TS-ONLY; yes leads to FORWARD and Docker or k3s rules"});
+box(m,"b-arr",20,95,170,60,"Packet arrives",["To: server's address"]);
+el("path",{class:"edge on",d:"M190 125 H240"},m);
+box(m,"b-pre",240,85,210,80,"PREROUTING",["Was the To address","rewritten (DNAT)?"]);
+el("path",{class:"edge on",d:"M450 110 C490 110 490 45 530 45"},m);
+el("path",{class:"edge on",d:"M450 140 C490 140 490 205 530 205"},m);
+const a1=el("text",{class:"elab",x:470,y:70},m); a1.textContent="no";
+const a2=el("text",{class:"elab",x:470,y:190},m); a2.textContent="yes";
+box(m,"b-inp",530,10,370,70,"Still for the server → INPUT",["guarded by TS-ONLY (ours): sshd, ollama, casaos"]);
+box(m,"b-fwd",530,170,370,70,"Now for a container/pod → FORWARD",["guarded by Docker / k3s rules, not TS-ONLY"]);
+document.getElementById("mini").appendChild(m);
+
+render();
+})();
+</script>
+</body>
+</html>
