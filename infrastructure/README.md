@@ -6,7 +6,7 @@ Everything applied to the cluster comes from this directory, branch `main`.
 ## Current state
 
 - **Cluster**: k3s, single node (`saiserver`)
-- **ArgoCD**: namespace `devpool`, UI at `https://sai.tailaf8d25.ts.net:8443` (tailnet-only via tailscale serve)
+- **ArgoCD**: namespace `devpool`, UI at `https://<server-magicdns-name>:8443` (tailnet-only via tailscale serve)
 - **Managed apps**: postgres, postgres-mcp, dev-strom (all in ArgoCD, all tracking `main`)
 
 ## Structure
