@@ -61,7 +61,7 @@ New connection arrives
 
 The `TS-ONLY` chain comes from **`tailscale-only.service`**. It rebuilds the chain at every boot, for IPv4 and IPv6. `lo` must be allowed, or programs on the server itself can't reach Ollama on `127.0.0.1:11434`. To protect another host port, add it to `PORTS` in [`tailscale-only.service`](../../infrastructure/cluster/tailscale-only.service) and re-run the script.
 
-**Kubernetes NodePorts** (ArgoCD, postgres-mcp, 9router) are handled differently. k3s is configured (`/etc/rancher/k3s/config.yaml`) to open NodePorts only on Tailscale addresses (`100.64.0.0/10`) and localhost. A `DROP` rule in `INPUT` can't do this job, because kube-proxy redirects NodePort traffic in `PREROUTING`, before `INPUT` ever sees it. Localhost is kept because `tailscale serve` proxies to `127.0.0.1:30300` and `127.0.0.1:31322`.
+**Kubernetes NodePorts** (ArgoCD, postgres-mcp) are handled differently. k3s is configured (`/etc/rancher/k3s/config.yaml`) to open NodePorts only on Tailscale addresses (`100.64.0.0/10`) and localhost. A `DROP` rule in `INPUT` can't do this job, because kube-proxy redirects NodePort traffic in `PREROUTING`, before `INPUT` ever sees it. Localhost is kept because `tailscale serve` proxies to `127.0.0.1:30300` and `127.0.0.1:31322`.
 
 ---
 
@@ -70,7 +70,7 @@ The `TS-ONLY` chain comes from **`tailscale-only.service`**. It rebuilds the cha
 | Service | From Tailscale | From home Wi-Fi / LAN | From the internet |
 |---|---|---|---|
 | SSH (22) | ✅ | 🔒 dropped by firewall | 🔒 router + firewall |
-| ArgoCD / postgres-mcp / 9router (NodePorts) | ✅ | 🔒 k3s only listens on Tailscale + localhost | 🔒 |
+| ArgoCD / postgres-mcp (NodePorts) | ✅ | 🔒 k3s only listens on Tailscale + localhost | 🔒 |
 | CasaOS (80) | ✅ | ✅ open on purpose (photo/drive browsing at home) | 🔒 router (IPv4) |
 | Ollama (11434) | ✅ `http://sai:11434` | 🔒 dropped by firewall | 🔒 router + firewall |
 | Public apps via Cloudflare tunnel | No inbound port at all | | |

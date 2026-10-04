@@ -465,7 +465,7 @@ sequenceDiagram
 |---|---|---|---|---|---|
 | SSH | 22 | all | ✅ | 🔒 TS-ONLY | 🔒 |
 | Ollama | 11434 | all | ✅ | 🔒 TS-ONLY | 🔒 |
-| ArgoCD, postgres-mcp, 9router | NodePorts | Tailscale + localhost | ✅ | 🔒 | 🔒 |
+| ArgoCD, postgres-mcp | NodePorts | Tailscale + localhost | ✅ | 🔒 | 🔒 |
 | x11vnc (desktop) | 5900 | Tailscale IP (+ `[::]`) | ✅ | ⚠️ IPv6 only, password | ⚠️ see 9 |
 | CasaOS | 80 | all | ✅ | ✅ by choice | 🔒 router (IPv4) |
 | Samba file sharing | 139, 445 | all | ✅ | ⚠️ open | ⚠️ see 9 |
