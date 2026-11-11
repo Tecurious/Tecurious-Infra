@@ -1,0 +1,101 @@
+# Immich server: web UI + API + background jobs.
+#
+# Photos stay on the host's 1 TB HDD (hostPath), exactly where the Docker
+# install kept them, so moving to k3s copies no files.
+# hostPort 2283 keeps the phone app's server URL, http://<server-magicdns-name>:2283,
+# unchanged. The ClusterIP Service is for in-cluster clients (e.g. cloudflared).
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: immich
+  name: immich-server
+  labels:
+    app: immich-server
+spec:
+  selector:
+    app: immich-server
+  ports:
+    - name: http
+      port: 2283
+      targetPort: 2283
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: immich
+  name: immich-server
+  labels:
+    app: immich-server
+spec:
+  # 0 until the database has been restored from the Docker install (see
+  # kustomization.yaml). Starting earlier would create an empty schema and take
+  # port 2283 away from the still-running Docker server.
+  replicas: 0
+  strategy:
+    type: Recreate   # one library + hostPort: never two servers at once
+  selector:
+    matchLabels:
+      app: immich-server
+  template:
+    metadata:
+      labels:
+        app: immich-server
+    spec:
+      containers:
+        - name: immich-server
+          image: ghcr.io/immich-app/immich-server:v3.3.6@sha256:e1981983b1c13f6024b57d72e7ecae3342eed1581201ab09fb248932d86c593a
+          ports:
+            - name: http
+              containerPort: 2283
+              hostPort: 2283
+          env:
+            - name: TZ
+              value: America/New_York
+            - name: DB_HOSTNAME
+              value: immich-postgres
+            - name: DB_USERNAME
+              value: postgres
+            - name: DB_DATABASE_NAME
+              value: immich
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: immich-db-credentials
+                  key: DB_PASSWORD
+            - name: REDIS_HOSTNAME
+              value: immich-valkey
+          volumeMounts:
+            - name: library
+              mountPath: /data
+          startupProbe:   # first start after an upgrade can run long DB migrations
+            httpGet:
+              path: /api/server/ping
+              port: http
+            periodSeconds: 10
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /api/server/ping
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/server/ping
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 5
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "4Gi"
+              cpu: "4"
+      volumes:
+        - name: library
+          hostPath:
+            path: /mnt/internalHDD_DATA/immich/library
+            # Directory (not DirectoryOrCreate): if the HDD isn't mounted, the pod
+            # fails to start instead of writing photos onto the system disk.
+            type: Directory

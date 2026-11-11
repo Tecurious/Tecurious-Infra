@@ -1,0 +1,64 @@
+# Valkey (Redis-compatible) job queue for Immich. Nothing durable lives here:
+# a restart only drops queued jobs, which Immich re-queues on its own schedule.
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: immich
+  name: immich-valkey
+  labels:
+    app: immich-valkey
+spec:
+  selector:
+    app: immich-valkey
+  ports:
+    - name: redis
+      port: 6379
+      targetPort: 6379
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: immich
+  name: immich-valkey
+  labels:
+    app: immich-valkey
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: immich-valkey
+  template:
+    metadata:
+      labels:
+        app: immich-valkey
+    spec:
+      containers:
+        - name: valkey
+          image: docker.io/valkey/valkey:9@sha256:c123e3715db63d06d4ad6964884037aa0d5d4d703939b9929954112889708e1d
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          readinessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 6379
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              memory: "32Mi"
+              cpu: "25m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+      volumes:
+        - name: data
+          emptyDir: {}
