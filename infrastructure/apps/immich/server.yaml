@@ -27,10 +27,9 @@ metadata:
   labels:
     app: immich-server
 spec:
-  # 0 until the database has been restored from the Docker install (see
-  # kustomization.yaml). Starting earlier would create an empty schema and take
-  # port 2283 away from the still-running Docker server.
-  replicas: 0
+  # Was 0 until the database was restored from the Docker install (see
+  # kustomization.yaml). Set it to 0 again to roll back to Docker.
+  replicas: 1
   strategy:
     type: Recreate   # one library + hostPort: never two servers at once
   selector:
