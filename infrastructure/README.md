@@ -7,7 +7,7 @@ Everything applied to the cluster comes from this directory, branch `main`.
 
 - **Cluster**: k3s, single node (`saiserver`)
 - **ArgoCD**: namespace `devpool`, UI at `https://<server-magicdns-name>:8443` (tailnet-only via tailscale serve)
-- **Managed apps**: postgres, postgres-mcp, dev-strom (all in ArgoCD, all tracking `main`)
+- **Managed apps**: postgres, postgres-mcp, dev-strom, cloudflared, immich (all in ArgoCD, all tracking `main`)
 
 ## Structure
 
@@ -19,10 +19,12 @@ infrastructure/
 │   ├── apps-onboard/            # ALL Application CRs live here (one file per app)
 │   │   ├── postgres.yaml
 │   │   ├── postgres-mcp.yaml
-│   │   └── dev-strom.yaml
+│   │   ├── dev-strom.yaml
+│   │   └── immich.yaml
 │   ├── postgres/                # workload manifests (kustomization + resources)
 │   ├── postgres-mcp/
-│   └── dev-strom/               # api-deployment, web-deployment, migration-job
+│   ├── dev-strom/               # api-deployment, web-deployment, migration-job
+│   └── immich/                  # photo backup: server, ML, own Postgres, Valkey (move steps in kustomization.yaml)
 └── cluster/
     ├── k3s-argocd/              # ArgoCD install (pinned v2.13.3) + NodePort patch
     ├── argocd-cm-defaults.yaml  # ArgoCD server config

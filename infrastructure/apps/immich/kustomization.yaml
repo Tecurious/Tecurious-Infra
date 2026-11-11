@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: immich
+
+resources:
+  - namespace.yaml
+  - postgres.yaml
+  - valkey.yaml
+  - machine-learning.yaml
+  - server.yaml
+
+# Immich photo backup (iPhone app -> Tailscale -> this cluster -> host HDD).
+#
+# Out-of-band secret (never committed): immich-db-credentials in ns immich.
+# Reuse the password from the old Docker install's .env:
+#   kubectl -n immich create secret generic immich-db-credentials \
+#     --from-literal=DB_PASSWORD="$(grep '^DB_PASSWORD=' ~/immich-app/.env | cut -d= -f2-)"
+#
+# Moving from the Docker install (one-time, ~15 min offline):
+#   1. Merge with immich-server at replicas: 0; postgres, valkey and ML come up.
+#   2. docker compose stop immich-server immich-machine-learning   (in ~/immich-app)
+#   3. docker exec immich_postgres pg_dumpall --clean --if-exists -U postgres | gzip > immich.sql.gz
+#   4. Restore into the new database (Immich's documented restore):
+#        gunzip -c immich.sql.gz \
+#        | sed "s/SELECT pg_catalog.set_config('search_path', '', false);/SELECT pg_catalog.set_config('search_path', 'public, pg_catalog', true);/g" \
+#        | kubectl -n immich exec -i immich-postgres-0 -- psql -U postgres -d postgres
+#   5. docker compose down    (frees host port 2283; ~/immich-app is kept for rollback)
+#   6. Set immich-server replicas: 1 and merge.
+# Rollback: set replicas back to 0, merge, then `docker compose up -d` in ~/immich-app.
+#
+# Upgrades: bump the server and ML image tags together (and their digests), after
+# reading Immich's release notes. The database image changes only when they say so.
